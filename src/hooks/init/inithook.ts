@@ -1,17 +1,12 @@
 import {Hook} from '@oclif/core'
 
 import {ensureConfigFile} from '../../lib/config/ensure-config.js'
-import {ensureDocumentsDir} from '../../lib/config/ensure-documents-dir.js'
 import {checkFirefoxInstalled} from '../../lib/hooks/check-firefox.js'
 
 const hook: Hook<'init'> = async function (options) {
 
-  // #region 配置目录初始化
-  const documentsDir = ensureDocumentsDir()
-  // #endregion
-
   // #region 配置文件初始化
-  ensureConfigFile(options.config.configDir, documentsDir)
+  ensureConfigFile(options.config.configDir)
   // #endregion
   
   // #region 浏览器检测

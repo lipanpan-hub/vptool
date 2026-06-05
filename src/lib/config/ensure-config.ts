@@ -1,16 +1,18 @@
 import {existsSync, mkdirSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 
+import {ensureDocumentsDir} from './ensure-documents-dir.js'
+
 /**
  * 确保配置文件存在,如果不存在则创建默认配置文件
  * @param configDir - 配置目录路径
- * @param documentsDir - 文档目录路径,用于写入配置文件
+ * @returns 完整的 config.yml 文件路径
  */
-export function ensureConfigFile(configDir: string, documentsDir: string): void {
+export function ensureConfigFile(configDir: string): string {
   const configPath = join(configDir, 'config.yml')
   
   if (existsSync(configPath)) {
-    return
+    return configPath
   }
   try {
     // 确保配置目录存在
@@ -18,9 +20,13 @@ export function ensureConfigFile(configDir: string, documentsDir: string): void 
       mkdirSync(configDir, {recursive: true})
     }
     
+    // 获取 documents 目录路径
+    const documentsDir = ensureDocumentsDir()
+    console.log(documentsDir)
+    
     // 创建默认配置内容
     const defaultConfig = `# vptool 配置文件
-documentsDir: ${documentsDir}
+documentsPath: ${documentsDir}
 `
     
     writeFileSync(configPath, defaultConfig, 'utf-8')
@@ -28,4 +34,6 @@ documentsDir: ${documentsDir}
   } catch (error) {
     process.stderr.write(`创建配置文件失败: ${error}\n`)
   }
+
+  return configPath
 }
