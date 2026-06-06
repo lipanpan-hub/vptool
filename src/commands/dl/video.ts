@@ -4,6 +4,7 @@ import {readDocumentsDir} from '../../lib/config/read-config.js'
 import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
+import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
 export default class DlVideo extends Command {
   static args = {
@@ -69,22 +70,7 @@ export default class DlVideo extends Command {
       
       this.log('\n✅ 下载完成!')
     } catch (error) {
-      this.handleError(error, useCookies)
+      this.error(formatVideoError(error, useCookies, 'download'))
     }
-  }
-
-  private handleError(error: unknown, useCookies: boolean): never {
-    if (useCookies && error instanceof Error) {
-      this.error(
-        `下载失败: ${error.message}\n\n` +
-          '提示：\n' +
-          '  1. 请确保 Firefox 浏览器已安装并已登录相关网站\n' +
-          '  2. 尝试先在 Firefox 中访问该视频，确保可以正常观看\n' +
-          '  3. 关闭 Firefox 浏览器后再试（某些系统可能需要）\n' +
-          '  4. 或使用 --no-use-cookies 跳过 cookies',
-      )
-    }
-
-    this.error(`下载失败: ${error}`)
   }
 }

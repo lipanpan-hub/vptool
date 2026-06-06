@@ -29,6 +29,7 @@
     "@types/node": "^18",
     "@types/prompts": "^2.4.9",
     "chai": "^4",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-oclif": "^6",
     "eslint-config-prettier": "^10",
@@ -81,6 +82,8 @@
   },
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
+    "start": "node ./bin/run.js",
+    "debug": "cross-env DEBUG=oclif:vp:dl:* ./bin/run.js",
     "lint": "eslint",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "npm run lint",

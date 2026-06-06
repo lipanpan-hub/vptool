@@ -1,4 +1,4 @@
-import {spawn} from 'node:child_process'
+import {YtDlp} from 'ytdlp-nodejs'
 
 export interface DownloadVideoOptions {
   formatId: string
@@ -16,93 +16,80 @@ export async function downloadVideo(
   logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
   logger?.log(`保存位置: ${outputDir}\n`)
 
-  // 构建 yt-dlp 命令参数
-  const args = [
-    url,
-    '--format', formatId,
-    '--output', `${outputDir}/%(title)s.%(ext)s`,
-    '--progress', // 显示进度
-    '--newline',  // 每个进度更新输出一行
-  ]
-
-  if (useCookies) {
-    args.push('--cookies-from-browser', 'firefox')
+  const ytdlp = new YtDlp()
+  
+  let lastProgressLength = 0
+  
+  try {
+    // 使用 download builder API
+    // 等同命令: yt-dlp -f <formatId> -o "<outputDir>/%(title)s.%(ext)s" --progress --newline [--cookies-from-browser firefox] <url>
+    const builder = ytdlp
+      .download(url)
+      .addOption('format', formatId)
+      .output(`${outputDir}/%(title)s.%(ext)s`)
+      .addArgs('--progress', '--newline')
+      .on('progress', (progress: any) => {
+        // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
+        if (progress.percentage_str) {
+          const parts = [
+            `下载进度: ${progress.percentage_str}`,
+          ]
+          
+          if (progress.total_bytes_str) {
+            parts.push(`大小: ${progress.total_bytes_str}`)
+          }
+          
+          if (progress.speed_str) {
+            parts.push(`速度: ${progress.speed_str}`)
+          }
+          
+          if (progress.eta_str) {
+            parts.push(`预计剩余: ${progress.eta_str}`)
+          }
+          
+          const progressLine = parts.join(' | ')
+          
+          if (lastProgressLength > 0) {
+            process.stdout.write('\r' + ' '.repeat(lastProgressLength) + '\r')
+          }
+          process.stdout.write(progressLine)
+          lastProgressLength = progressLine.length
+        }
+      })
+      .on('stdout', (data: string) => {
+        const output = data.trim()
+        if (output.includes('[download]') && !output.includes('%')) {
+          if (lastProgressLength > 0) {
+            process.stdout.write('\n')
+            lastProgressLength = 0
+          }
+          logger?.log(output)
+        }
+      })
+      .on('stderr', (data: string) => {
+        const error = data.trim()
+        if (error.length > 0) {
+          if (lastProgressLength > 0) {
+            process.stdout.write('\n')
+            lastProgressLength = 0
+          }
+          logger?.log(error)
+        }
+      })
+    
+    if (useCookies) {
+      builder.cookiesFromBrowser('firefox')
+    }
+    
+    await builder.run()
+    
+    if (lastProgressLength > 0) {
+      process.stdout.write('\n')
+    }
+  } catch (error) {
+    if (lastProgressLength > 0) {
+      process.stdout.write('\n')
+    }
+    throw error
   }
-
-  // 使用 spawn 执行 yt-dlp
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn('yt-dlp', args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    
-    let lastProgressLength = 0
-    
-    // 监听标准输出
-    child.stdout.on('data', (data: Buffer) => {
-      const output = data.toString().trim()
-      
-      // 匹配 yt-dlp 的进度输出格式
-      // 格式示例: [download]  45.8% of 123.45MiB at 1.23MiB/s ETA 00:45
-      const progressMatch = output.match(/\[download\]\s+(\d+\.\d+)%\s+of\s+~?\s*(\S+)\s+at\s+(\S+)\s+ETA\s+(\S+)/)
-      
-      if (progressMatch) {
-        const [, percent, size, speed, eta] = progressMatch
-        const progressLine = `下载进度: ${percent}% | 大小: ${size} | 速度: ${speed} | 预计剩余: ${eta}`
-        
-        // 清除上一行并输出新的进度
-        if (lastProgressLength > 0) {
-          process.stdout.write('\r' + ' '.repeat(lastProgressLength) + '\r')
-        }
-        process.stdout.write(progressLine)
-        lastProgressLength = progressLine.length
-      } else if (output.includes('[download]')) {
-        // 其他下载相关信息
-        if (lastProgressLength > 0) {
-          process.stdout.write('\n')
-          lastProgressLength = 0
-        }
-        logger?.log(output)
-      } else if (output.length > 0) {
-        // 其他信息
-        if (lastProgressLength > 0) {
-          process.stdout.write('\n')
-          lastProgressLength = 0
-        }
-        logger?.log(output)
-      }
-    })
-    
-    // 监听标准错误输出
-    child.stderr.on('data', (data: Buffer) => {
-      const error = data.toString().trim()
-      if (error.length > 0) {
-        if (lastProgressLength > 0) {
-          process.stdout.write('\n')
-          lastProgressLength = 0
-        }
-        logger?.log(error)
-      }
-    })
-    
-    // 监听进程退出
-    child.on('close', (code) => {
-      if (lastProgressLength > 0) {
-        process.stdout.write('\n')
-      }
-      
-      if (code === 0) {
-        resolve()
-      } else {
-        reject(new Error(`yt-dlp 进程退出，退出码: ${code}`))
-      }
-    })
-    
-    // 监听错误
-    child.on('error', (error) => {
-      if (lastProgressLength > 0) {
-        process.stdout.write('\n')
-      }
-      reject(error)
-    })
-  })
 }

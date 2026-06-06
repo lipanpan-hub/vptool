@@ -1,8 +1,9 @@
 
 import {Args, Command, Flags} from '@oclif/core'
-import {type VideoInfo, YtDlp} from 'ytdlp-nodejs'
 
 import {displayVideoInfo} from '../../lib/dl/vmeta-display.js'
+import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
+import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
 export default class DlVmeta extends Command {
   static args = {
@@ -37,34 +38,10 @@ export default class DlVmeta extends Command {
 
     try {
       this.log('正在获取详细信息...')
-      const videoInfo = await this.fetchVideoInfo(videoUrl, useCookies)
+      const videoInfo = await fetchVideoInfo(videoUrl, useCookies)
       displayVideoInfo(videoInfo, this)
     } catch (error) {
-      this.handleError(error, useCookies)
+      this.error(formatVideoError(error, useCookies, 'fetch'))
     }
-  }
-
-  private async fetchVideoInfo(url: string, useCookies: boolean): Promise<VideoInfo> {
-    const ytDlp = new YtDlp()
-    const options = useCookies ? {cookiesFromBrowser: 'firefox' as const} : {}
-    const videoInfo = (await ytDlp.getInfoAsync(url, options)) as VideoInfo
-    if (!videoInfo) {
-      this.error('无法获取视频信息')
-    }
-    return videoInfo
-  }
-
-  private handleError(error: unknown, useCookies: boolean): never {
-    if (useCookies && error instanceof Error) {
-      this.error(
-        `获取视频信息失败: ${error.message}\n\n` +
-          '提示：\n' +
-          '  1. 请确保 Firefox 浏览器已安装并已登录相关网站\n' +
-          '  2. 尝试先在 Firefox 中访问该视频，确保可以正常观看\n' +
-          '  3. 关闭 Firefox 浏览器后再试（某些系统可能需要）',
-      )
-    }
-
-    this.error(`获取视频信息失败: ${error}`)
   }
 }
