@@ -3,6 +3,7 @@ import {join} from 'node:path'
 
 export interface FileEntry {
   depth: number
+  fullPath: string
   isDir: boolean
   name: string
   size: number
@@ -21,10 +22,10 @@ export function listFiles(dir: string): FileEntry[] {
     for (const entry of entries) {
       const fullPath = join(current, entry.name)
       if (entry.isDirectory()) {
-        result.push({depth, isDir: true, name: entry.name, size: 0})
+        result.push({depth, fullPath, isDir: true, name: entry.name, size: 0})
         walk(fullPath, depth + 1)
       } else {
-        result.push({depth, isDir: false, name: entry.name, size: statSync(fullPath).size})
+        result.push({depth, fullPath, isDir: false, name: entry.name, size: statSync(fullPath).size})
       }
     }
   }
