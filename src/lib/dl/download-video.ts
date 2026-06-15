@@ -1,6 +1,8 @@
 import {YtDlp} from 'ytdlp-nodejs'
 
 export interface DownloadVideoOptions {
+  // 在下载视频的同时额外抽取一份音频文件(用于语音识别等), 需要 ffmpeg
+  extractAudio?: boolean
   formatId: string
   outputDir: string
   useCookies: boolean
@@ -11,10 +13,13 @@ export async function downloadVideo(
   options: DownloadVideoOptions,
   logger?: {log: (message: string) => void}
 ): Promise<void> {
-  const {formatId, outputDir, useCookies} = options
+  const {extractAudio, formatId, outputDir, useCookies} = options
   
   logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
   logger?.log(`保存位置: ${outputDir}\n`)
+  if (extractAudio) {
+    logger?.log('🎵 将额外抽取一份音频文件\n')
+  }
 
   const ytdlp = new YtDlp()
   
@@ -26,7 +31,7 @@ export async function downloadVideo(
     const builder = ytdlp
       .download(url)
       .addOption('format', formatId)
-      .output(`${outputDir}/%(title)s.%(ext)s`)
+      .output(`${outputDir}/%(webpage_url_domain)s/%(title)s.%(ext)s`)
       .addArgs('--progress', '--newline')
       .on('progress', (progress: any) => {
         // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
@@ -79,6 +84,11 @@ export async function downloadVideo(
     
     if (useCookies) {
       builder.cookiesFromBrowser('firefox')
+    }
+
+    // 抽取音频: --extract-audio 抽取为 mp3, --keep-video 保留合并后的视频文件
+    if (extractAudio) {
+      builder.addArgs('--extract-audio', '--audio-format', 'mp3', '--keep-video')
     }
     
     await builder.run()
