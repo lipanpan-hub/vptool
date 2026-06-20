@@ -1,3 +1,5 @@
+import {diffArrays} from 'diff'
+
 interface WordSegment {
   text: string
   time: string
@@ -6,8 +8,8 @@ interface WordSegment {
 const EFFECTIVE = /[\u4e00-\u9fa5A-Za-z0-9]/
 
 function parseWordSegments(vtt: string): WordSegment[] {
-  // 提取全部 <时间戳>词 片段,词文本取到下一个标签之前
-  const re = /<(\d{2}:\d{2}:\d{2}\.\d{3})>([^<]*)/g
+  // 提取全部 <时间戳>词 片段,词文本取到下一个标签之前(不跨行)
+  const re = /<(\d{2}:\d{2}:\d{2}\.\d{3})>([^<\n]*)/g
   const segments: WordSegment[] = []
   let m: null | RegExpExecArray
   while ((m = re.exec(vtt)) !== null) {
@@ -23,13 +25,6 @@ function parseFileEnd(vtt: string): string {
   return matches.length > 0 ? matches[matches.length - 1][1] : ''
 }
 
-function countEffective(s: string): number {
-  // 统计有效字符数(汉字/字母/数字),忽略标点与空白
-  let n = 0
-  for (const c of s) if (EFFECTIVE.test(c)) n++
-  return n
-}
-
 function splitParagraphs(text: string): string[] {
   // 按空行分段,去除首尾空白并丢弃空段
   return text
@@ -39,28 +34,80 @@ function splitParagraphs(text: string): string[] {
     .filter((p) => p !== '')
 }
 
+function assignWordsToParagraphs(segments: WordSegment[], paragraphs: string[]): WordSegment[][] {
+  // 通过字符级 diff 对齐,把每个源词归入对应段落,容忍文本被增删改字
+
+  // #region 构建有效字符流(仅保留汉字/字母/数字)
+  const vttChars: string[] = []
+  const vttCharWord: number[] = [] // 每个有效字符所属的词索引
+  segments.forEach((seg, wi) => {
+    for (const c of seg.text) {
+      if (EFFECTIVE.test(c)) {
+        vttChars.push(c)
+        vttCharWord.push(wi)
+      }
+    }
+  })
+
+  const txtChars: string[] = []
+  const txtCharPara: number[] = [] // 每个有效字符所属的段落索引
+  paragraphs.forEach((p, pi) => {
+    for (const c of p) {
+      if (EFFECTIVE.test(c)) {
+        txtChars.push(c)
+        txtCharPara.push(pi)
+      }
+    }
+  })
+  // #endregion
+
+  // #region 字符级 diff 对齐,推导每个源词的段落归属
+  const changes = diffArrays(vttChars, txtChars)
+  const wordPara = new Array<number>(segments.length).fill(-1)
+  let vi = 0
+  let ti = 0
+  let lastPara = 0
+  for (const ch of changes) {
+    const len = ch.value.length
+    if (ch.added) {
+      // 仅 demo2 多出的字:只推进文本指针并更新当前段落
+      for (let k = 0; k < len; k++, ti++) lastPara = txtCharPara[ti]
+    } else if (ch.removed) {
+      // 仅源 VTT 多出的字:归入当前段落
+      for (let k = 0; k < len; k++, vi++) {
+        const wi = vttCharWord[vi]
+        if (wordPara[wi] === -1) wordPara[wi] = lastPara
+      }
+    } else {
+      // 公共字符:一一对应
+      for (let k = 0; k < len; k++, vi++, ti++) {
+        lastPara = txtCharPara[ti]
+        const wi = vttCharWord[vi]
+        if (wordPara[wi] === -1) wordPara[wi] = lastPara
+      }
+    }
+  }
+  // #endregion
+
+  // #region 按段落归属分组,纯标点词(无有效字符)跟随前一个词
+  const groups: WordSegment[][] = paragraphs.map(() => [])
+  let prevPara = 0
+  segments.forEach((seg, wi) => {
+    const para = wordPara[wi] === -1 ? prevPara : wordPara[wi]
+    groups[para].push(seg)
+    prevPara = para
+  })
+  // #endregion
+
+  return groups
+}
+
 export function restampSegments(vttContent: string, segmentedText: string): string {
   const segments = parseWordSegments(vttContent)
   if (segments.length === 0) return 'WEBVTT\n'
 
-  // 计算每个段落在全局有效字符流中的结束边界
   const paragraphs = splitParagraphs(segmentedText)
-  const paraBoundaries: number[] = []
-  let acc = 0
-  for (const p of paragraphs) {
-    acc += countEffective(p)
-    paraBoundaries.push(acc)
-  }
-
-  // 按每个词首字符的全局位置,将词归入对应段落
-  const groups: WordSegment[][] = paragraphs.map(() => [])
-  let charPos = 0
-  let pIdx = 0
-  for (const seg of segments) {
-    while (pIdx < paraBoundaries.length - 1 && charPos >= paraBoundaries[pIdx]) pIdx++
-    groups[pIdx].push(seg)
-    charPos += countEffective(seg.text)
-  }
+  const groups = assignWordsToParagraphs(segments, paragraphs)
 
   // 每段生成一个 cue:start 为段首词时间,end 为下一非空段段首词时间,末段用文件结束时间
   const fileEnd = parseFileEnd(vttContent)
