@@ -19,7 +19,12 @@ inclusion: always
 - 删除文件优先用 delete_file 工具；删目录用 Remove-Item -LiteralPath ... -Recurse，并再次列目录确认。
 - 原因: 本环境(Windows + PowerShell)下形如 `del a.ts b.ts & echo done` 会被解析成后台 job，命令实际未执行，文件残留。
 
-## 本环境用 & 串联命令会被当成后台 job(再次踩到)
+## Powershell环境用 & 串联命令会被当成后台 job(再次踩到)
 
 - 形如 `npx ts-node a.ts & npx ts-node b.ts` 在本环境(PowerShell)下，& 后面的命令不会执行，而是把前半段丢进 BackgroundJob，导致第二个命令"看似没跑"。要分多次调用工具，或用 ; 分隔，绝不用 &。
 
+
+## 需求里的"压缩/合并"等模糊动词必须先确认粒度
+
+- 错误: 用户要"把多行字幕压缩成单行",我理解成"逐 cue 把多行 payload 合并为一行",实际用户要的是"整个文件合并成单条字幕(首 cue 起始到末 cue 结束)"。
+- 教训: "压缩""合并""精简"这类动词的作用范围(单个单元内 vs 跨全部单元)往往有歧义,动手前要么举例确认输出形态,要么先产出最小样本给用户看,不要凭感觉定粒度。
