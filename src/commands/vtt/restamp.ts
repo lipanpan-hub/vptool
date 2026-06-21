@@ -3,11 +3,12 @@ import {existsSync, readFileSync, writeFileSync} from 'node:fs'
 import {basename, dirname, extname, join} from 'node:path'
 
 import {restampSegments} from '../../lib/vtt/restamp.js'
+import {selectFile} from '../../lib/vtt/select-file.js'
 
 export default class VttRestamp extends Command {
   static args = {
-    vtt: Args.string({description: '含逐词时间戳的源 VTT 文件', required: true}),
-    text: Args.string({description: '重新分段后的纯文本文件', required: true}),
+    vtt: Args.string({description: '含逐词时间戳的源 VTT 文件(省略则扫描当前目录交互选择)'}),
+    text: Args.string({description: '重新分段后的纯文本文件(省略则扫描当前目录交互选择)'}),
   }
 
   static description = '依据源 VTT 的逐词时间戳,为重新分段的文本逐段打上内嵌时间戳,每个段落生成一个 cue'
@@ -24,13 +25,16 @@ export default class VttRestamp extends Command {
   public async run(): Promise<void> {
     const {args, flags} = await this.parse(VttRestamp)
 
-    if (!existsSync(args.vtt)) this.error(`文件不存在: ${args.vtt}`)
-    if (!existsSync(args.text)) this.error(`文件不存在: ${args.text}`)
+    const vttPath = args.vtt ?? (await selectFile(['.vtt'], '请选择源 VTT 文件:'))
+    const textPath = args.text ?? (await selectFile(['.txt'], '请选择重新分段的文本文件:'))
 
-    const result = restampSegments(readFileSync(args.vtt, 'utf-8'), readFileSync(args.text, 'utf-8'))
+    if (!existsSync(vttPath)) this.error(`文件不存在: ${vttPath}`)
+    if (!existsSync(textPath)) this.error(`文件不存在: ${textPath}`)
 
-    const name = basename(args.text, extname(args.text))
-    const outputPath = flags.output ?? join(dirname(args.text), `${name}.restamp.vtt`)
+    const result = restampSegments(readFileSync(vttPath, 'utf-8'), readFileSync(textPath, 'utf-8'))
+
+    const name = basename(textPath, extname(textPath))
+    const outputPath = flags.output ?? join(dirname(textPath), `${name}.restamp.vtt`)
     writeFileSync(outputPath, result, 'utf-8')
 
     this.log(`已生成: ${outputPath}`)
