@@ -79,9 +79,9 @@ export default class DlVideo extends Command {
         selectedFormatId = await selectFormat(videoInfo)
       }
 
-      // 交互式选择保存目录 prefix, 在 baseOutputDir 后追加一级子目录(空表示不追加)
+      // 交互式选择保存目录 prefix, 在 baseOutputDir 后追加一级子目录
       const prefix = await selectPrefix(this.config.configDir)
-      const outputDir = prefix ? join(baseOutputDir, prefix) : baseOutputDir
+      const outputDir = join(baseOutputDir, prefix)
 
       // 下载视频
       await downloadVideo(videoUrl, {

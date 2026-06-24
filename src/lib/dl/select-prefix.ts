@@ -6,9 +6,9 @@ import {addDlPrefix, readDlPrefix} from '../config/read-config.js'
 export async function selectPrefix(configDir: string): Promise<string> {
   const prefixes = readDlPrefix(configDir)
 
-  // 构建选项: 首项为"无"(空 prefix, 直接保存到根目录), 其余来自配置文件
+  // 构建选项: 首项为默认 x 目录, 其余来自配置文件
   const choices = [
-    {title: '（无，直接保存到根目录）', value: ''},
+    {title: '（默认 x 目录）', value: 'x'},
     ...prefixes.map((p) => ({title: p, value: p})),
   ]
 
@@ -33,8 +33,8 @@ export async function selectPrefix(configDir: string): Promise<string> {
     throw new Error('未选择 prefix，取消下载')
   }
 
-  // 选中的是配置中不存在的新值时, 询问是否保存到配置文件
-  if (prefix && !prefixes.includes(prefix)) {
+  // 选中的是 choices 中不存在的新值时, 询问是否保存到配置文件
+  if (prefix && !choices.some((c) => c.value === prefix)) {
     const {save} = await prompts({
       message: `是否将 prefix "${prefix}" 保存到配置文件?`,
       name: 'save',
