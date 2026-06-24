@@ -1,5 +1,5 @@
 import {Args, Command, Flags} from '@oclif/core'
-import {existsSync, readFileSync, writeFileSync} from 'node:fs'
+import {existsSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs'
 import {basename, dirname, extname, join} from 'node:path'
 
 import {restampSegments} from '../../lib/vtt/restamp.js'
@@ -19,6 +19,7 @@ export default class VttRestamp extends Command {
   ]
 
   static flags = {
+    keep: Flags.boolean({char: 'k', description: '保留原始文本文件(默认生成后删除)'}),
     output: Flags.string({char: 'o', description: '输出文件路径(默认在文本文件旁生成 *.restamp.vtt)'}),
   }
 
@@ -36,6 +37,8 @@ export default class VttRestamp extends Command {
     const name = basename(textPath, extname(textPath))
     const outputPath = flags.output ?? join(dirname(textPath), `${name}.restamp.vtt`)
     writeFileSync(outputPath, result, 'utf-8')
+
+    if (!flags.keep) unlinkSync(textPath)
 
     this.log(`已生成: ${outputPath}`)
   }
