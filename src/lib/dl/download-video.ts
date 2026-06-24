@@ -1,5 +1,7 @@
 import {YtDlp} from 'ytdlp-nodejs'
 
+import {extractAudioToMp3} from './extract-audio.js'
+
 export interface DownloadVideoOptions {
   // 在下载视频的同时额外抽取一份音频文件(用于语音识别等), 需要 ffmpeg
   extractAudio?: boolean
@@ -86,15 +88,23 @@ export async function downloadVideo(
       builder.cookiesFromBrowser('firefox')
     }
 
-    // 抽取音频: --extract-audio 抽取为 mp3, --keep-video 保留合并后的视频文件
-    if (extractAudio) {
-      builder.addArgs('--extract-audio', '--audio-format', 'mp3', '--keep-video')
-    }
-    
-    await builder.run()
-    
+    // 下载并合并视频, 合并完成后 yt-dlp 会自动清理 bestvideo/bestaudio 的分流中间文件
+    const result = await builder.run()
+
     if (lastProgressLength > 0) {
       process.stdout.write('\n')
+    }
+
+    // 抽取音频: 对合并后的成品视频单独抽取一份 mp3, 避免分流中间文件被保留
+    if (extractAudio) {
+      const videoPath = result.info?.[0]?.filepath || result.filePaths?.[0]
+      if (videoPath) {
+        logger?.log('\n🎵 正在抽取音频...')
+        const mp3Path = await extractAudioToMp3(videoPath, logger)
+        logger?.log(`✓ 音频已保存: ${mp3Path}`)
+      } else {
+        logger?.log('\n⚠ 未能定位下载的视频文件, 跳过音频抽取')
+      }
     }
   } catch (error) {
     if (lastProgressLength > 0) {

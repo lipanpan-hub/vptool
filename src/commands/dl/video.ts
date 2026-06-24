@@ -1,9 +1,11 @@
 import {Args, Command, Flags} from '@oclif/core'
+import {join} from 'node:path'
 
 import {readDocumentsDir} from '../../lib/config/read-config.js'
 import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
+import {selectPrefix} from '../../lib/dl/select-prefix.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
 export default class DlVideo extends Command {
@@ -56,7 +58,7 @@ export default class DlVideo extends Command {
     const keepAudio = flags['keep-audio']
     
     // 获取输出目录: 优先使用命令行参数,否则读取配置文件,最后降级到当前目录
-    const outputDir = flags.output || readDocumentsDir(this.config.configDir) || '.'
+    const baseOutputDir = flags.output || readDocumentsDir(this.config.configDir) || '.'
 
     this.log(`正在准备下载视频: ${videoUrl}\n`)
     if (useCookies) {
@@ -76,6 +78,10 @@ export default class DlVideo extends Command {
       } else if (!selectedFormatId) {
         selectedFormatId = await selectFormat(videoInfo)
       }
+
+      // 交互式选择保存目录 prefix, 在 baseOutputDir 后追加一级子目录(空表示不追加)
+      const prefix = await selectPrefix(this.config.configDir)
+      const outputDir = prefix ? join(baseOutputDir, prefix) : baseOutputDir
 
       // 下载视频
       await downloadVideo(videoUrl, {
