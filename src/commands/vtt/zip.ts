@@ -45,14 +45,14 @@ export default class VttZip extends Command {
 
   static examples = [
     '<%= config.bin %> <%= command.id %> demo.vtt',
-    '<%= config.bin %> <%= command.id %> demo.vtt -o out.vtt',
-    '<%= config.bin %> <%= command.id %> demo.vtt -t',
+    '<%= config.bin %> <%= command.id %> demo.vtt -o out.txt',
+    '<%= config.bin %> <%= command.id %> demo.vtt -z',
     '<%= config.bin %> <%= command.id %>',
   ]
 
   static flags = {
     output: Flags.string({char: 'o', description: '输出文件路径(默认在原文件旁生成 *.zip.vtt 或 *.txt)'}),
-    text: Flags.boolean({char: 't', description: '提取纯文本:去除时间戳与所有字幕格式,仅保留文字'}),
+    zip: Flags.boolean({char: 'z', description: '压缩成单行字幕:去除说话人信息并完整保留单词级时间戳'}),
   }
 
   public async run(): Promise<void> {
@@ -65,9 +65,9 @@ export default class VttZip extends Command {
     }
 
     const content = readFileSync(inputPath, 'utf-8')
-    const result = flags.text ? extractText(content) : zipVtt(content)
+    const result = flags.zip ? zipVtt(content) : extractText(content)
 
-    const outputPath = flags.output ?? defaultOutputPath(inputPath, flags.text ? '.txt' : '.zip.vtt')
+    const outputPath = flags.output ?? defaultOutputPath(inputPath, flags.zip ? '.zip.vtt' : '.txt')
     writeFileSync(outputPath, result, 'utf-8')
 
     this.log(`已生成: ${outputPath}`)
