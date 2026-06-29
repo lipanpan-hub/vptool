@@ -8,6 +8,7 @@
   },
   "bugs": "https://github.com/lipanpan-hub/vptool/issues",
   "dependencies": {
+    "@inquirer/prompts": "^7.10.1",
     "@oclif/core": "^4",
     "@oclif/plugin-autocomplete": "^3.2.50",
     "@oclif/plugin-help": "^6",
