@@ -7,9 +7,11 @@ import {selectPrefix} from '../../lib/dl/select-prefix.js'
 import {parseDouyinInput} from '../../lib/dyd/input.js'
 import {findDouyinVideoProvider, selectDouyinVideoProvider} from '../../lib/dyd/providers.js'
 import {fetchDouyinVideoData} from '../../lib/dyd/tikhub.js'
-import {downloadResolvedDouyinVideo, resolveBestDouyinVideo} from '../../lib/dyd/video-download.js'
+import {downloadResolvedDouyinVideo, resolveBestDouyinVideo, sanitizeFilename} from '../../lib/dyd/video-download.js'
+import {extractAudioCopy} from '../../lib/fft/extract-audio-copy.js'
 
 export default class DydFetchOneVideo extends Command {
+  static aliases = ['dyd:fetch-one-video', 'dyd:fov']  
   static args = {
     input: Args.string({
       description: '抖音链接、分享信息或 aweme_id',
@@ -50,15 +52,17 @@ export default class DydFetchOneVideo extends Command {
 
       const token = await this.getTikHubToken()
       const prefix = await selectPrefix(this.config.configDir)
-      const outputDir = join(baseOutputDir, prefix)
 
       this.log(`正在使用 provider: ${provider.id}`)
       const data = await fetchDouyinVideoData(provider, parsedInput, token)
       const video = resolveBestDouyinVideo(data)
       this.log(`已解析视频: ${video.title}`)
 
+      const outputDir = join(baseOutputDir, prefix, 'douyin.com', sanitizeFilename(video.title))
       const filepath = await downloadResolvedDouyinVideo(video, outputDir, this)
       this.log(`\n✅ 下载完成: ${filepath}`)
+      const audioPath = await extractAudioCopy(filepath, this)
+      this.log(`✅ 音频抽取完成: ${audioPath}`)
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
     }

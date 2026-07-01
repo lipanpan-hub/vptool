@@ -19,12 +19,15 @@ const URL_KEY_PATTERN = /(url|play|download|src|uri)/i
 const VIDEO_PATH_PATTERN = /(video|play_addr|download_addr|bit_rate|dash|data|aweme_detail)/i
 const VIDEO_FILE_URL_PATTERN = /\.(mp4|mov|m4v)(\?|$)/i
 const ESCAPED_AMPERSAND = String.raw`\u0026`
+const MAX_TITLE_LENGTH = 35
+const BRACKETED_TEXT_PATTERN =
+  /\([^()]*\)|（[^（）]*）|\[[^\][]*]|［[^［］]*］|\{[^{}]*}|｛[^｛｝]*｝|<[^<>]*>|《[^《》]*》|【[^【】]*】|「[^「」]*」|『[^『』]*』|〔[^〔〕]*〕|〖[^〖〗]*〗|〈[^〈〉]*〉/g
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function sanitizeFilename(value: string): string {
+export function sanitizeFilename(value: string): string {
   let sanitized = value
   for (const char of ['<', '>', ':', '"', '/', String.fromCodePoint(92), '|', '?', '*']) {
     sanitized = sanitized.split(char).join('_')
@@ -35,12 +38,28 @@ function sanitizeFilename(value: string): string {
   return sanitized.slice(0, 120) || 'douyin-video'
 }
 
+function normalizeTitle(value: string): string {
+  const title = value
+    .replaceAll(/https?:\/\/\S+/gi, '')
+    .replaceAll(BRACKETED_TEXT_PATTERN, '')
+    .replaceAll(/#[^\s#]+/g, '')
+    .replaceAll(/复制此链接.*$/g, '')
+    .replaceAll(/打开抖音.*$/g, '')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+
+  if (title.length <= MAX_TITLE_LENGTH) return title
+
+  return `${title.slice(0, MAX_TITLE_LENGTH).trimEnd()}`
+}
+
 function collectTitle(value: unknown): null | string {
   if (!isRecord(value)) return null
   for (const key of ['desc', 'title', 'item_title', 'share_title']) {
     const title = value[key]
     if (typeof title === 'string' && title.trim()) {
-      return title.trim()
+      const normalizedTitle = normalizeTitle(title)
+      if (normalizedTitle) return normalizedTitle
     }
   }
 
