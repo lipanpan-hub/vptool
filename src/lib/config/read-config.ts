@@ -19,6 +19,26 @@ export function readDocumentsDir(configDir: string): string | null {
   }
 }
 
+export function readTikhubToken(configDir: string): string | null {
+  const configPath = join(configDir, 'config.yml')
+  if (!existsSync(configPath)) return null
+  try {
+    const config = parse(readFileSync(configPath, 'utf-8')) as Record<string, any>
+    return config?.TIKHUB_IO_TOKEN || null
+  } catch {
+    return null
+  }
+}
+
+export function writeTikhubToken(configDir: string, token: string): void {
+  const configPath = join(configDir, 'config.yml')
+  const config = existsSync(configPath)
+    ? ((parse(readFileSync(configPath, 'utf-8')) as Record<string, any>) || {})
+    : {}
+  config.TIKHUB_IO_TOKEN = token
+  writeFileSync(configPath, stringify(config), 'utf-8')
+}
+
 export function readDlPrefix(configDir: string): string[] {
   const configPath = join(configDir, 'config.yml')
   if (!existsSync(configPath)) return []
