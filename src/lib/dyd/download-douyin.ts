@@ -17,87 +17,104 @@ interface Logger {
   log: (message: string) => void
 }
 
-function sanitizeName(name: string): string {
-  // 先去除 # 开头的话题标签, 再清理非法字符与换行, 折叠空白并限制长度
-  const cleaned = name
-    .replaceAll(/#\S+/g, ' ')
-    .replaceAll(/[\\/:*?"<>|\n\r\t]/g, '_')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, 80)
-    .trim()
-  return cleaned || 'douyin_video'
-}
+// 进度报告器: 单一职责, 仅负责按时间间隔节流刷新下载进度到控制台, 与下载逻辑解耦
+class ProgressReporter {
+  private downloaded = 0
+  private lastLen = 0
+  private lastTick = 0
+  private readonly start = Date.now()
 
-async function downloadFile(url: string, dest: string): Promise<void> {
-  const res = await fetch(url, {
-    headers: {Referer: 'https://www.douyin.com/', 'User-Agent': 'Mozilla/5.0'},
-  })
-  if (!res.ok || !res.body) {
-    throw new Error(`视频下载失败: HTTP ${res.status}`)
+  constructor(private readonly total: number) {}
+
+  finish(): void {
+    // 有过输出才补换行, 避免污染后续日志
+    if (this.lastLen > 0) process.stdout.write('\n')
   }
 
-  const total = Number(res.headers.get('content-length')) || 0
-  const file = createWriteStream(dest)
-  const reader = res.body.getReader()
-  const start = Date.now()
-  let downloaded = 0
-  let lastTick = 0
-  let lastLen = 0
-
-  for (;;) {
-    // eslint-disable-next-line no-await-in-loop
-    const {done, value} = await reader.read()
-    if (done) break
-    file.write(Buffer.from(value))
-    downloaded += value.length
-
-    // 按时间间隔节流刷新进度, 避免刷屏
+  update(chunkLength: number): void {
+    this.downloaded += chunkLength
     const now = Date.now()
-    if (now - lastTick > 200) {
-      lastTick = now
-      const mb = (downloaded / 1024 / 1024).toFixed(2)
-      const speed = (downloaded / 1024 / ((now - start) / 1000) / 1024).toFixed(2)
-      const percent = total > 0 ? `${((downloaded / total) * 100).toFixed(1)}%` : '未知'
-      const line = `下载进度: ${percent} | 已下载: ${mb} MB | 速度: ${speed} MB/s`
-      process.stdout.write('\r' + ' '.repeat(lastLen) + '\r' + line)
-      lastLen = line.length
+    if (now - this.lastTick <= 200) return
+    this.lastTick = now
+
+    const mb = (this.downloaded / 1024 / 1024).toFixed(2)
+    const speed = (this.downloaded / 1024 / ((now - this.start) / 1000) / 1024).toFixed(2)
+    const percent = this.total > 0 ? `${((this.downloaded / this.total) * 100).toFixed(1)}%` : '未知'
+    const line = `下载进度: ${percent} | 已下载: ${mb} MB | 速度: ${speed} MB/s`
+    process.stdout.write('\r' + ' '.repeat(this.lastLen) + '\r' + line)
+    this.lastLen = line.length
+  }
+}
+
+// 下载器: 依赖注入的 provider 负责解析地址, 本类负责组织路径、落盘与抽音编排
+export class DouyinVideoDownloader {
+  constructor(
+    private readonly provider: DouyinProvider,
+    private readonly input: ResolvedInput,
+    private readonly options: DownloadDouyinOptions,
+    private readonly logger?: Logger,
+  ) {}
+
+  async download(): Promise<void> {
+    const {extractAudio, outputBaseDir, token} = this.options
+
+    this.logger?.log(`\n正在使用接口 [${this.provider.id}] 解析视频地址...`)
+    const video = await this.provider.fetchVideo(this.input, token)
+    this.logger?.log(`✓ 视频标题: ${video.desc || video.awemeId}\n`)
+
+    // 路径结构: <base>/<prefix>/douyin.com/<视频名>/<视频名>.mp4
+    const name = this.sanitizeName(video.desc || video.awemeId)
+    const dir = join(outputBaseDir, 'douyin.com', name)
+    mkdirSync(dir, {recursive: true})
+    const videoPath = join(dir, `${name}.mp4`)
+
+    this.logger?.log(`保存位置: ${videoPath}\n`)
+    await this.fetchToFile(video.videoUrl, videoPath)
+
+    if (extractAudio) {
+      this.logger?.log('\n🎵 正在抽取音频...')
+      const mp3Path = await extractAudioToMp3(videoPath, this.logger)
+      this.logger?.log(`✓ 音频已保存: ${mp3Path}`)
     }
   }
 
-  file.end()
-  await new Promise<void>((resolve, reject) => {
-    file.on('finish', resolve)
-    file.on('error', reject)
-  })
-  if (lastLen > 0) process.stdout.write('\n')
-}
+  private async fetchToFile(url: string, dest: string): Promise<void> {
+    const res = await fetch(url, {
+      headers: {Referer: 'https://www.douyin.com/', 'User-Agent': 'Mozilla/5.0'},
+    })
+    if (!res.ok || !res.body) {
+      throw new Error(`视频下载失败: HTTP ${res.status}`)
+    }
 
-// 下载器: 依赖注入的 provider 负责解析地址, 本函数负责组织路径与落盘
-export async function downloadDouyinVideo(
-  provider: DouyinProvider,
-  input: ResolvedInput,
-  options: DownloadDouyinOptions,
-  logger?: Logger,
-): Promise<void> {
-  const {extractAudio, outputBaseDir, token} = options
+    const progress = new ProgressReporter(Number(res.headers.get('content-length')) || 0)
+    const file = createWriteStream(dest)
+    const reader = res.body.getReader()
 
-  logger?.log(`\n正在使用接口 [${provider.id}] 解析视频地址...`)
-  const video = await provider.fetchVideo(input, token)
-  logger?.log(`✓ 视频标题: ${video.desc || video.awemeId}\n`)
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop
+      const {done, value} = await reader.read()
+      if (done) break
+      file.write(Buffer.from(value))
+      progress.update(value.length)
+    }
 
-  // 路径结构: <base>/<prefix>/douyin.com/<视频名>/<视频名>.mp4
-  const name = sanitizeName(video.desc || video.awemeId)
-  const dir = join(outputBaseDir, 'douyin.com', name)
-  mkdirSync(dir, {recursive: true})
-  const videoPath = join(dir, `${name}.mp4`)
+    file.end()
+    await new Promise<void>((resolve, reject) => {
+      file.on('finish', resolve)
+      file.on('error', reject)
+    })
+    progress.finish()
+  }
 
-  logger?.log(`保存位置: ${videoPath}\n`)
-  await downloadFile(video.videoUrl, videoPath)
-
-  if (extractAudio) {
-    logger?.log('\n🎵 正在抽取音频...')
-    const mp3Path = await extractAudioToMp3(videoPath, logger)
-    logger?.log(`✓ 音频已保存: ${mp3Path}`)
+  private sanitizeName(name: string): string {
+    // 先去除 # 开头的话题标签, 再清理非法字符与换行, 折叠空白并限制长度
+    const cleaned = name
+      .replaceAll(/#\S+/g, ' ')
+      .replaceAll(/[\\/:*?"<>|\n\r\t]/g, '_')
+      .replaceAll(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80)
+      .trim()
+    return cleaned || 'douyin_video'
   }
 }

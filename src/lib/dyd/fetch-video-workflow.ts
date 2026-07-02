@@ -4,7 +4,7 @@ import type {DouyinProvider, ResolvedInput} from './provider.js'
 
 import {readDocumentsDir} from '../config/read-config.js'
 import {selectPrefix} from '../dl/select-prefix.js'
-import {downloadDouyinVideo} from './download-douyin.js'
+import {DouyinVideoDownloader} from './download-douyin.js'
 import {ensureTikhubToken} from './ensure-token.js'
 import {resolveInput} from './resolve-input.js'
 import {selectProvider} from './select-provider.js'
@@ -47,7 +47,13 @@ export class FetchVideoWorkflow {
     const baseOutputDir = this.options.output || readDocumentsDir(this.configDir) || '.'
     const prefix = await selectPrefix(this.configDir)
     const outputBaseDir = join(baseOutputDir, prefix)
-    await downloadDouyinVideo(provider, input, {extractAudio: this.options.keepAudio, outputBaseDir, token}, this.logger)
+    const downloader = new DouyinVideoDownloader(
+      provider,
+      input,
+      {extractAudio: this.options.keepAudio, outputBaseDir, token},
+      this.logger,
+    )
+    await downloader.download()
   }
 
   private async resolveInput(): Promise<ResolvedInput> {
