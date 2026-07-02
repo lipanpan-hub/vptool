@@ -1,4 +1,5 @@
 import Fuse from 'fuse.js'
+import {pinyin} from 'pinyin-pro'
 import prompts from 'prompts'
 
 interface DirEntry {
@@ -8,13 +9,16 @@ interface DirEntry {
 }
 
 export async function selectDirectory(dirs: DirEntry[], initialInput?: string): Promise<string> {
-  // 构建 choices：缩进展示层级，value 为 fullPath
+  // 构建 choices：title 缩进展示层级，py/pyFirst 为拼音索引供模糊搜索
   const choices = dirs.map((d) => ({
+    py: pinyin(d.name, {toneType: 'none', type: 'string'}).replaceAll(' ', ''),
+    pyFirst: pinyin(d.name, {pattern: 'first', toneType: 'none', type: 'string'}).replaceAll(' ', ''),
     title: d.depth < 0 ? d.name : '  '.repeat(d.depth) + d.name,
     value: d.fullPath,
   }))
 
-  const fuse = new Fuse(choices, {keys: ['title'], threshold: 0.4})
+  // keys 同时匹配中文名、全拼、首字母，实现拼音模糊搜索
+  const fuse = new Fuse(choices, {keys: ['title', 'py', 'pyFirst'], threshold: 0.4})
 
   const response = await prompts({
     choices,
