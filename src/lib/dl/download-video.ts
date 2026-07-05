@@ -29,11 +29,11 @@ export async function downloadVideo(
   
   try {
     // 使用 download builder API
-    // 等同命令: yt-dlp -f <formatId> -o "<outputDir>/%(title)s.%(ext)s" --progress --newline [--cookies-from-browser firefox] <url>
+    // 等同命令: yt-dlp -f <formatId> -o "<outputDir>/%(title).35s.%(ext)s" --progress --newline [--cookies-from-browser firefox] <url>
     const builder = ytdlp
       .download(url)
       .addOption('format', formatId)
-      .output(`${outputDir}/%(webpage_url_domain)s/%(title)s.%(ext)s`)
+      .output(`${outputDir}/%(webpage_url_domain)s/%(title).35s.%(ext)s`)
       .addArgs('--progress', '--newline')
       .on('progress', (progress: any) => {
         // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
