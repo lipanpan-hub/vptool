@@ -121,9 +121,9 @@ export function editConfigTui(configPath: string): Promise<void> {
     // #region 布局与启动
     tui.addChild(new Text(cyan('YAML 配置编辑器'), 0, 0))
     tui.addChild(new Text(gray('回车换行  Ctrl+S 保存  Ctrl+C 退出'), 0, 0))
-    tui.addChild(new Spacer(1))
+    // tui.addChild(new Spacer(1))
     tui.addChild(editor)
-    tui.addChild(new Spacer(1))
+    // tui.addChild(new Spacer(1))
     tui.addChild(status)
     tui.setFocus(editor)
     tui.start()
