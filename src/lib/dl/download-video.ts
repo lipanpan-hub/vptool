@@ -33,7 +33,7 @@ export async function downloadVideo(
     const builder = ytdlp
       .download(url)
       .addOption('format', formatId)
-      .output(`${outputDir}/%(webpage_url_domain)s/%(title).35s.%(ext)s`)
+      .output(`${outputDir}/%(webpage_url_domain)s/%(title)s.%(ext)s`)
       .addArgs('--progress', '--newline')
       .on('progress', (progress: any) => {
         // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
