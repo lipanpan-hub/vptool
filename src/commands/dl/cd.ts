@@ -1,7 +1,7 @@
 import {Args, Command} from '@oclif/core'
 import {existsSync} from 'node:fs'
 
-import {readDocumentsDir} from '../../lib/config/read-config.js'
+import {ToolConfigManager} from '../../lib/config/index.js'
 import {listFiles} from '../../lib/dl/list-files.js'
 import {selectDirectory} from '../../lib/dl/select-directory.js'
 import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
@@ -17,11 +17,7 @@ export default class DlCd extends Command {
 
   public async run(): Promise<void> {
     const {args} = await this.parse(DlCd)
-    const documentsPath = readDocumentsDir(this.config.configDir)
-
-    if (!documentsPath) {
-      this.error('配置文件中未找到 documentsPath 字段')
-    }
+    const documentsPath = ToolConfigManager.fromConfigDir(this.config.configDir).getDocumentsPath()
 
     if (!existsSync(documentsPath)) {
       this.error(`目录不存在: ${documentsPath}`)

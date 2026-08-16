@@ -1,10 +1,11 @@
 import Fuse from 'fuse.js'
 import prompts from 'prompts'
 
-import {addDlPrefix, readDlPrefix} from '../config/read-config.js'
+import {ToolConfigManager} from '../config/index.js'
 
 export async function selectPrefix(configDir: string): Promise<string> {
-  const prefixes = readDlPrefix(configDir)
+  const configManager = ToolConfigManager.fromConfigDir(configDir)
+  const prefixes = configManager.getDlPrefix()
 
   // 构建选项: 首项为默认 x 目录, 其余来自配置文件
   const choices = [
@@ -41,7 +42,7 @@ export async function selectPrefix(configDir: string): Promise<string> {
       type: 'confirm',
     })
     if (save) {
-      addDlPrefix(configDir, prefix)
+      configManager.addDlPrefix(prefix)
     }
   }
 

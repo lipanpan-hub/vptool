@@ -10,10 +10,9 @@ import {
   matchesKey,
   ProcessTerminal,
   setKeybindings,
-  Spacer,
   Text,
   truncateToWidth,
-  TUI,
+  TuiMainScreen,
   TUI_KEYBINDINGS,
   visibleWidth,
 } from '@earendil-works/pi-tui'
@@ -65,7 +64,7 @@ export function editConfigTui(configPath: string): Promise<void> {
     // #region 装配 TUI 与 Editor
     const initial = readFileSync(configPath, 'utf8')
     const terminal = new ProcessTerminal()
-    const tui = new TUI(terminal)
+    const tui = new TuiMainScreen(terminal)
 
     const theme: EditorTheme = {
       borderColor: gray,
@@ -102,7 +101,7 @@ export function editConfigTui(configPath: string): Promise<void> {
     // #endregion
 
     // #region 顶层拦截快捷键: Ctrl+C 退出, Ctrl+S 保存
-    tui.addInputListener((data) => {
+    tui.addInputListener((data: string) => {
       if (matchesKey(data, Key.ctrl('c'))) {
         tui.stop()
         resolve()

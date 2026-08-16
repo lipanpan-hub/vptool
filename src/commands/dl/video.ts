@@ -1,7 +1,7 @@
 import {Args, Command, Flags} from '@oclif/core'
 import {join} from 'node:path'
 
-import {readDocumentsDir} from '../../lib/config/read-config.js'
+import {ToolConfigManager} from '../../lib/config/index.js'
 import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
@@ -57,8 +57,8 @@ export default class DlVideo extends Command {
     const best = flags.best
     const keepAudio = flags['keep-audio']
     
-    // 获取输出目录: 优先使用命令行参数,否则读取配置文件,最后降级到当前目录
-    const baseOutputDir = flags.output || readDocumentsDir(this.config.configDir) || '.'
+    // 获取输出目录: 优先使用命令行参数,否则读取当前档案(缺省时回退默认工作目录)
+    const baseOutputDir = flags.output || ToolConfigManager.fromConfigDir(this.config.configDir).getDocumentsPath()
 
     this.log(`正在准备下载视频: ${videoUrl}\n`)
     if (useCookies) {

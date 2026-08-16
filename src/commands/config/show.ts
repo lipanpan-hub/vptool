@@ -1,35 +1,26 @@
-import {Command} from '@oclif/core'
 import {existsSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 
-export default class ConfigShow extends Command {
-  static description = '展示用户配置文件内容'
+import {BaseCommand} from '../../lib/base-command.js'
+import {ToolConfigManager} from '../../lib/config/index.js'
 
+export default class ConfigShow extends BaseCommand {
+  static aliases = ['cf:ls', 'cf:show']
+  static description = '列出所有的配置'
   static examples = ['<%= config.bin %> <%= command.id %>']
 
   public async run(): Promise<void> {
-    // 获取配置文件路径
-    const configPath = join(this.config.configDir, 'config.yml')
+    const configManager = ToolConfigManager.fromConfigDir(this.config.configDir)
+    const configPath = configManager.getConfigPath()
+    this.log(`配置文件路径: ${configPath}`)
 
-    // 检查配置文件是否存在
     if (!existsSync(configPath)) {
-      this.error(`配置文件不存在: ${configPath}`)
+      this.log('配置文件不存在')
+      return
     }
 
-    try {
-      // 读取配置文件内容
-      const configContent = readFileSync(configPath, 'utf-8')
-
-      // 输出配置文件路径
-      this.log(`\n配置文件路径: ${configPath}\n`)
-
-      // 输出配置内容
-      this.log('配置内容:')
-      this.log('─'.repeat(50))
-      this.log(configContent)
-      this.log('─'.repeat(50))
-    } catch (error) {
-      this.error(`读取配置文件失败: ${error}`)
-    }
+    // 直接读取原始 YAML 文本打印，保留原始格式
+    const rawYaml = readFileSync(configPath, 'utf8')
+    this.log(rawYaml)
   }
 }

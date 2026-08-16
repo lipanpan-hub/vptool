@@ -1,9 +1,10 @@
 import prompts from 'prompts'
 
-import {readTikhubToken, writeTikhubToken} from '../config/read-config.js'
+import {ToolConfigManager} from '../config/index.js'
 
 export async function ensureTikhubToken(configDir: string): Promise<string> {
-  const existing = readTikhubToken(configDir)
+  const configManager = ToolConfigManager.fromConfigDir(configDir)
+  const existing = configManager.getTikhubToken()
   if (existing) return existing
 
   // 配置缺失 TIKHUB_IO_TOKEN 时交互询问, 并写回配置文件供后续复用
@@ -18,6 +19,6 @@ export async function ensureTikhubToken(configDir: string): Promise<string> {
     throw new Error('未提供 Token，已取消')
   }
 
-  writeTikhubToken(configDir, trimmed)
+  configManager.setTikhubToken(trimmed)
   return trimmed
 }

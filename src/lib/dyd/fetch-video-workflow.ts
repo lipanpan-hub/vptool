@@ -2,7 +2,7 @@ import {join} from 'node:path'
 
 import type {DouyinProvider, ResolvedInput} from './provider.js'
 
-import {readDocumentsDir} from '../config/read-config.js'
+import {ToolConfigManager} from '../config/index.js'
 import {selectPrefix} from '../dl/select-prefix.js'
 import {DouyinVideoDownloader} from './download-douyin.js'
 import {ensureTikhubToken} from './ensure-token.js'
@@ -44,7 +44,7 @@ export class FetchVideoWorkflow {
   }
 
   private async download(provider: DouyinProvider, input: ResolvedInput, token: string): Promise<void> {
-    const baseOutputDir = this.options.output || readDocumentsDir(this.configDir) || '.'
+    const baseOutputDir = this.options.output || ToolConfigManager.fromConfigDir(this.configDir).getDocumentsPath()
     const prefix = await selectPrefix(this.configDir)
     const outputBaseDir = join(baseOutputDir, prefix)
     const downloader = new DouyinVideoDownloader(

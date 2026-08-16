@@ -1,12 +1,16 @@
 import {Hook} from '@oclif/core'
-
-import {ensureConfigFile} from '../../lib/config/ensure-config.js'
+import {ToolConfigManager} from '../../lib/config/index.js'
 import {checkFirefoxInstalled} from '../../lib/hooks/check-firefox.js'
 
 const hook: Hook<'init'> = async function (options) {
 
   // #region 配置文件初始化
-  ensureConfigFile(options.config.configDir)
+  // 确保 configDir 下存在 config.yml,不存在则创建含默认档案的配置文件
+  const configManager = ToolConfigManager.fromConfigDir(options.config.configDir)
+  this.log(configManager.getConfigPath())
+  if (configManager.ensureConfig()) {
+    this.log(`已创建默认配置文件: ${configManager.getConfigPath()}`)
+  }
   // #endregion
   
   // #region 浏览器检测
