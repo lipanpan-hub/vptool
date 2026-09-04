@@ -3,7 +3,7 @@ import {helpers} from 'ytdlp-nodejs'
 
 export async function extractAudioToMp3(
   videoPath: string,
-  logger?: {log: (message: string) => void},
+  _logger?: {log: (message: string) => void},
 ): Promise<string> {
   // 从已合并的成品视频中抽取一份 mp3, 输出到同目录同名文件
   const ffmpegPath = helpers.findFFmpegBinary()

@@ -7,8 +7,8 @@ export function checkFirefoxInstalled(): boolean {
     if (process.platform === 'win32') {
       // Windows: 检查常见的火狐安装路径和注册表
       const commonPaths = [
-        'C:\\Program Files\\Mozilla Firefox\\firefox.exe',
-        'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe',
+        String.raw`C:\Program Files\Mozilla Firefox\firefox.exe`,
+        String.raw`C:\Program Files (x86)\Mozilla Firefox\firefox.exe`,
       ]
       
       // 先检查文件是否存在
@@ -21,18 +21,18 @@ export function checkFirefoxInstalled(): boolean {
       // 尝试通过 where 命令查找
       execSync('where firefox', {stdio: 'ignore'})
       return true
-    } else if (process.platform === 'darwin') {
+    } if (process.platform === 'darwin') {
       // macOS: 检查 Applications 目录
       if (existsSync('/Applications/Firefox.app')) {
         return true
       }
       execSync('which firefox', {stdio: 'ignore'})
       return true
-    } else {
+    } 
       // Linux: 使用 which 命令
       execSync('which firefox', {stdio: 'ignore'})
       return true
-    }
+    
   } catch {
     return false
   }

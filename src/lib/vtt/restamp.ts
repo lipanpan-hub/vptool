@@ -5,7 +5,7 @@ interface WordSegment {
   time: string
 }
 
-const EFFECTIVE = /[\u4e00-\u9fa5A-Za-z0-9]/
+const EFFECTIVE = /[\u4E00-\u9FA5A-Za-z0-9]/
 
 function parseWordSegments(vtt: string): WordSegment[] {
   // 提取全部 <时间戳>词 片段,词文本取到下一个标签之前(不跨行)
@@ -22,13 +22,13 @@ function parseWordSegments(vtt: string): WordSegment[] {
 function parseFileEnd(vtt: string): string {
   // 取最后一个时间头的结束时间作为整体结束时间
   const matches = [...vtt.matchAll(/-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})/g)]
-  return matches.length > 0 ? matches[matches.length - 1][1] : ''
+  return matches.length > 0 ? matches.at(-1)![1] : ''
 }
 
 function splitParagraphs(text: string): string[] {
   // 按空行分段,去除首尾空白并丢弃空段
   return text
-    .replace(/\r\n/g, '\n')
+    .replaceAll('\r\n', '\n')
     .split(/\n[ \t]*\n/)
     .map((p) => p.trim())
     .filter((p) => p !== '')

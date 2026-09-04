@@ -1,6 +1,5 @@
 import * as inquirer from '@inquirer/prompts'
-import {Command, Flags} from '@oclif/core'
-import {join} from "node:path"
+import {Flags} from '@oclif/core'
 import { BaseCommand } from '../../lib/base-command.js'
 
 import {ToolConfigManager, editConfigTui, ExternalEditor} from '../../lib/config/index.js'

@@ -134,7 +134,7 @@ export function displaySubtitles(videoInfo: VideoInfo, logger: DisplayLogger): v
 
     for (const [langCode, subtitleList] of Object.entries(videoInfo.subtitles)) {
       const formats = subtitleList.map((s: any) => s.ext).filter(Boolean).join(', ')
-      const names = subtitleList.map((s: any) => s.name).filter(Boolean)[0] || langCode
+      const names = subtitleList.map((s: any) => s.name).find(Boolean) || langCode
 
       subtitlesTable.push([
         langCode,
@@ -158,7 +158,7 @@ export function displaySubtitles(videoInfo: VideoInfo, logger: DisplayLogger): v
 
     for (const [langCode, captionList] of Object.entries(videoInfo.automatic_captions)) {
       const formats = captionList.map((c: any) => c.ext).filter(Boolean).join(', ')
-      const names = captionList.map((c: any) => c.name).filter(Boolean)[0] || langCode
+      const names = captionList.map((c: any) => c.name).find(Boolean) || langCode
 
       captionsTable.push([
         langCode,

@@ -32,11 +32,11 @@ export default class VttRestamp extends Command {
     if (!existsSync(vttPath)) this.error(`文件不存在: ${vttPath}`)
     if (!existsSync(textPath)) this.error(`文件不存在: ${textPath}`)
 
-    const result = restampSegments(readFileSync(vttPath, 'utf-8'), readFileSync(textPath, 'utf-8'))
+    const result = restampSegments(readFileSync(vttPath, 'utf8'), readFileSync(textPath, 'utf8'))
 
     const name = basename(textPath, extname(textPath))
     const outputPath = flags.output ?? join(dirname(textPath), `${name}.restamp.vtt`)
-    writeFileSync(outputPath, result, 'utf-8')
+    writeFileSync(outputPath, result, 'utf8')
 
     if (!flags.keep) unlinkSync(textPath)
 

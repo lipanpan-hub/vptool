@@ -64,11 +64,11 @@ export default class VttZip extends Command {
       this.error(`文件不存在: ${inputPath}`)
     }
 
-    const content = readFileSync(inputPath, 'utf-8')
+    const content = readFileSync(inputPath, 'utf8')
     const result = flags.zip ? zipVtt(content) : extractText(content)
 
     const outputPath = flags.output ?? defaultOutputPath(inputPath, flags.zip ? '.zip.vtt' : '.txt')
-    writeFileSync(outputPath, result, 'utf-8')
+    writeFileSync(outputPath, result, 'utf8')
 
     this.log(`已生成: ${outputPath}`)
   }

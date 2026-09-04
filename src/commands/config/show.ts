@@ -1,5 +1,4 @@
 import {existsSync, readFileSync} from 'node:fs'
-import {join} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
 import {ToolConfigManager} from '../../lib/config/index.js'

@@ -113,7 +113,7 @@ export function editConfigTui(configPath: string): Promise<void> {
         return {consume: true}
       }
 
-      return undefined // 其余按键交给聚焦的 Editor
+       // 其余按键交给聚焦的 Editor
     })
     // #endregion
 
