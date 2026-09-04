@@ -10,12 +10,12 @@
   "dependencies": {
     "@earendil-works/pi-tui": "^0.84.2",
     "@inquirer/prompts": "^8.5.2",
-    "@oclif/core": "^4",
-    "@oclif/plugin-autocomplete": "^3.2.50",
-    "@oclif/plugin-help": "^6",
-    "@oclif/plugin-not-found": "^3.2.87",
-    "@oclif/plugin-version": "^2.2.47",
-    "@oclif/plugin-warn-if-update-available": "^3.1.65",
+    "@oclif/core": "^5.0.0",
+    "@oclif/plugin-autocomplete": "^4.0.0",
+    "@oclif/plugin-help": "^7.0.0",
+    "@oclif/plugin-not-found": "^4.0.0",
+    "@oclif/plugin-version": "^3.0.0",
+    "@oclif/plugin-warn-if-update-available": "^4.0.0",
     "cli-table3": "^0.6.5",
     "diff": "^9.0.0",
     "fuse.js": "^7.5.0",
@@ -26,7 +26,7 @@
     "pinyin-pro": "^3.28.1",
     "prompts": "^2.4.2",
     "yaml": "^2.9.0",
-    "ytdlp-nodejs": "^3.4.4"
+    "ytdlp-nodejs": "^3.4.5"
   },
   "devDependencies": {
     "@eslint/compat": "^1",
@@ -42,7 +42,7 @@
     "eslint-config-oclif": "^6",
     "eslint-config-prettier": "^10",
     "mocha": "^11",
-    "oclif": "^4",
+    "oclif": "^5.0.1",
     "shx": "^0.3.3",
     "ts-node": "^10",
     "typescript": "^5"
@@ -76,8 +76,26 @@
     ],
     "topicSeparator": " ",
     "topics": {
-      "hello": {
-        "description": "Say hello to the world and others"
+      "help":{
+        "description": "显示帮助信息"
+      },
+      "version": {
+        "description": "显示版本信息"
+      },
+      "config": {
+        "description": "查看与编辑用户配置文件（支持内置 TUI 与外部编辑器）"
+      },
+      "dl": {
+        "description": "下载视频并管理本地依赖环境（基于 yt-dlp 与 ffmpeg）"
+      },
+      "dyd": {
+        "description": "解析并下载抖音视频（可自动抽取音频）"
+      },
+      "fft": {
+        "description": "基于 ffmpeg 的音视频处理（如从视频无损抽取音频）"
+      },
+      "vtt": {
+        "description": "处理 VTT 字幕（单行压缩、按分段重新打时间戳等）"
       }
     },
     "hooks": {
