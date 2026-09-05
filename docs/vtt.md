@@ -31,7 +31,7 @@ EXAMPLES
   $ vp vtt restamp demo.zip.vtt demo2.txt -o out.vtt
 ```
 
-_See code: [src/commands/vtt/restamp.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.0/src/commands/vtt/restamp.ts)_
+_See code: [src/commands/vtt/restamp.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/vtt/restamp.ts)_
 
 ## `vp vtt zip [FILE]`
 
@@ -61,4 +61,4 @@ EXAMPLES
   $ vp vtt zip
 ```
 
-_See code: [src/commands/vtt/zip.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.0/src/commands/vtt/zip.ts)_
+_See code: [src/commands/vtt/zip.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/vtt/zip.ts)_
