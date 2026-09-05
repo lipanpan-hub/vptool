@@ -1,7 +1,7 @@
 {
   "name": "@lppx/vptool",
   "description": "a cli tool for video process",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "lppx",
   "bin": {
     "vp": "./bin/run.js"
