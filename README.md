@@ -320,7 +320,7 @@ EXAMPLES
   $ vp config edit --editor
 ```
 
-_See code: [src/commands/config/edit.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/config/edit.ts)_
+_See code: [src/commands/config/edit.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/config/edit.ts)_
 
 ## `vp config show`
 
@@ -341,7 +341,7 @@ EXAMPLES
   $ vp config show
 ```
 
-_See code: [src/commands/config/show.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/config/show.ts)_
+_See code: [src/commands/config/show.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/config/show.ts)_
 
 ## `vp dl URL`
 
@@ -376,7 +376,7 @@ EXAMPLES
   $ vp dl https://www.youtube.com/watch?v=dQw4w9WgXcQ --best --keep-audio
 ```
 
-_See code: [src/commands/dl/index.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/index.ts)_
+_See code: [src/commands/dl/index.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/index.ts)_
 
 ## `vp dl cd [X]`
 
@@ -398,7 +398,7 @@ EXAMPLES
   $ vp dl cd mydir
 ```
 
-_See code: [src/commands/dl/cd.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/cd.ts)_
+_See code: [src/commands/dl/cd.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/cd.ts)_
 
 ## `vp dl check`
 
@@ -420,7 +420,7 @@ EXAMPLES
   $ vp dl check --update
 ```
 
-_See code: [src/commands/dl/check.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/check.ts)_
+_See code: [src/commands/dl/check.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/check.ts)_
 
 ## `vp dl list`
 
@@ -442,7 +442,7 @@ EXAMPLES
   $ vp dl list --path
 ```
 
-_See code: [src/commands/dl/list.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/list.ts)_
+_See code: [src/commands/dl/list.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/list.ts)_
 
 ## `vp dl open`
 
@@ -459,7 +459,7 @@ EXAMPLES
   $ vp dl open
 ```
 
-_See code: [src/commands/dl/open.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/open.ts)_
+_See code: [src/commands/dl/open.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/open.ts)_
 
 ## `vp dl updatebin`
 
@@ -476,7 +476,7 @@ EXAMPLES
   $ vp dl updatebin
 ```
 
-_See code: [src/commands/dl/updatebin.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/updatebin.ts)_
+_See code: [src/commands/dl/updatebin.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/updatebin.ts)_
 
 ## `vp dl video URL`
 
@@ -511,7 +511,7 @@ EXAMPLES
   $ vp dl video https://www.youtube.com/watch?v=dQw4w9WgXcQ --best --keep-audio
 ```
 
-_See code: [src/commands/dl/video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/video.ts)_
+_See code: [src/commands/dl/video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/video.ts)_
 
 ## `vp dl vmeta URL`
 
@@ -538,7 +538,7 @@ EXAMPLES
   $ vp dl vmeta https://www.youtube.com/watch?v=dQw4w9WgXcQ --use-cookies
 ```
 
-_See code: [src/commands/dl/vmeta.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dl/vmeta.ts)_
+_See code: [src/commands/dl/vmeta.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/vmeta.ts)_
 
 ## `vp dyd fetch-one-video INPUT`
 
@@ -571,7 +571,7 @@ EXAMPLES
   $ vp dyd fetch-one-video https://v.douyin.com/xxxxxxx/ --provider app-v3
 ```
 
-_See code: [src/commands/dyd/fetch-one-video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/dyd/fetch-one-video.ts)_
+_See code: [src/commands/dyd/fetch-one-video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dyd/fetch-one-video.ts)_
 
 ## `vp dyd fov INPUT`
 
@@ -650,7 +650,7 @@ EXAMPLES
   $ vp fft extract-audio
 ```
 
-_See code: [src/commands/fft/extract-audio.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/fft/extract-audio.ts)_
+_See code: [src/commands/fft/extract-audio.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/fft/extract-audio.ts)_
 
 ## `vp fft pb [MEDIA]`
 
@@ -698,7 +698,7 @@ EXAMPLES
   $ vp fft probe
 ```
 
-_See code: [src/commands/fft/probe.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/fft/probe.ts)_
+_See code: [src/commands/fft/probe.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/fft/probe.ts)_
 
 ## `vp fft video-split-copy [VIDEO]`
 
@@ -723,7 +723,7 @@ EXAMPLES
   $ vp fft video-split-copy
 ```
 
-_See code: [src/commands/fft/video-split-copy.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/fft/video-split-copy.ts)_
+_See code: [src/commands/fft/video-split-copy.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/fft/video-split-copy.ts)_
 
 ## `vp fft vsc [VIDEO]`
 
@@ -813,7 +813,7 @@ EXAMPLES
   $ vp vtt restamp demo.zip.vtt demo2.txt -o out.vtt
 ```
 
-_See code: [src/commands/vtt/restamp.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/vtt/restamp.ts)_
+_See code: [src/commands/vtt/restamp.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/vtt/restamp.ts)_
 
 ## `vp vtt zip [FILE]`
 
@@ -843,7 +843,7 @@ EXAMPLES
   $ vp vtt zip
 ```
 
-_See code: [src/commands/vtt/zip.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.2/src/commands/vtt/zip.ts)_
+_See code: [src/commands/vtt/zip.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/vtt/zip.ts)_
 <!-- commandsstop -->
 
 # License
