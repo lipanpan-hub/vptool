@@ -29,7 +29,7 @@ EXAMPLES
   $ vp config edit --editor
 ```
 
-_See code: [src/commands/config/edit.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/config/edit.ts)_
+_See code: [src/commands/config/edit.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/config/edit.ts)_
 
 ## `vp config show`
 
@@ -50,4 +50,4 @@ EXAMPLES
   $ vp config show
 ```
 
-_See code: [src/commands/config/show.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/config/show.ts)_
+_See code: [src/commands/config/show.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/config/show.ts)_

@@ -56,7 +56,7 @@ EXAMPLES
   $ vp fft extract-audio
 ```
 
-_See code: [src/commands/fft/extract-audio.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/fft/extract-audio.ts)_
+_See code: [src/commands/fft/extract-audio.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/fft/extract-audio.ts)_
 
 ## `vp fft pb [MEDIA]`
 
@@ -104,7 +104,7 @@ EXAMPLES
   $ vp fft probe
 ```
 
-_See code: [src/commands/fft/probe.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/fft/probe.ts)_
+_See code: [src/commands/fft/probe.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/fft/probe.ts)_
 
 ## `vp fft video-split-copy [VIDEO]`
 
@@ -129,7 +129,7 @@ EXAMPLES
   $ vp fft video-split-copy
 ```
 
-_See code: [src/commands/fft/video-split-copy.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/fft/video-split-copy.ts)_
+_See code: [src/commands/fft/video-split-copy.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/fft/video-split-copy.ts)_
 
 ## `vp fft vsc [VIDEO]`
 
