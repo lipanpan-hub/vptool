@@ -45,7 +45,7 @@ EXAMPLES
   $ vp dl https://www.youtube.com/watch?v=dQw4w9WgXcQ --best --keep-audio
 ```
 
-_See code: [src/commands/dl/index.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/index.ts)_
+_See code: [src/commands/dl/index.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/index.ts)_
 
 ## `vp dl cd [X]`
 
@@ -67,7 +67,7 @@ EXAMPLES
   $ vp dl cd mydir
 ```
 
-_See code: [src/commands/dl/cd.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/cd.ts)_
+_See code: [src/commands/dl/cd.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/cd.ts)_
 
 ## `vp dl check`
 
@@ -89,7 +89,7 @@ EXAMPLES
   $ vp dl check --update
 ```
 
-_See code: [src/commands/dl/check.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/check.ts)_
+_See code: [src/commands/dl/check.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/check.ts)_
 
 ## `vp dl list`
 
@@ -111,7 +111,7 @@ EXAMPLES
   $ vp dl list --path
 ```
 
-_See code: [src/commands/dl/list.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/list.ts)_
+_See code: [src/commands/dl/list.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/list.ts)_
 
 ## `vp dl open`
 
@@ -128,7 +128,7 @@ EXAMPLES
   $ vp dl open
 ```
 
-_See code: [src/commands/dl/open.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/open.ts)_
+_See code: [src/commands/dl/open.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/open.ts)_
 
 ## `vp dl updatebin`
 
@@ -145,7 +145,7 @@ EXAMPLES
   $ vp dl updatebin
 ```
 
-_See code: [src/commands/dl/updatebin.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/updatebin.ts)_
+_See code: [src/commands/dl/updatebin.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/updatebin.ts)_
 
 ## `vp dl video URL`
 
@@ -180,7 +180,7 @@ EXAMPLES
   $ vp dl video https://www.youtube.com/watch?v=dQw4w9WgXcQ --best --keep-audio
 ```
 
-_See code: [src/commands/dl/video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/video.ts)_
+_See code: [src/commands/dl/video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/video.ts)_
 
 ## `vp dl vmeta URL`
 
@@ -207,4 +207,4 @@ EXAMPLES
   $ vp dl vmeta https://www.youtube.com/watch?v=dQw4w9WgXcQ --use-cookies
 ```
 
-_See code: [src/commands/dl/vmeta.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dl/vmeta.ts)_
+_See code: [src/commands/dl/vmeta.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dl/vmeta.ts)_

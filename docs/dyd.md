@@ -37,7 +37,7 @@ EXAMPLES
   $ vp dyd fetch-one-video https://v.douyin.com/xxxxxxx/ --provider app-v3
 ```
 
-_See code: [src/commands/dyd/fetch-one-video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.3/src/commands/dyd/fetch-one-video.ts)_
+_See code: [src/commands/dyd/fetch-one-video.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.5/src/commands/dyd/fetch-one-video.ts)_
 
 ## `vp dyd fov INPUT`
 
