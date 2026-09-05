@@ -1,7 +1,7 @@
 {
   "name": "@lppx/vptool",
   "description": "a cli tool for video process",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "author": "lppx",
   "bin": {
     "vp": "./bin/run.js"
@@ -76,7 +76,7 @@
     ],
     "topicSeparator": " ",
     "topics": {
-      "help":{
+      "help": {
         "description": "显示帮助信息"
       },
       "version": {
