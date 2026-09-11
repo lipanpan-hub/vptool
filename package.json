@@ -96,6 +96,9 @@
       },
       "vtt": {
         "description": "处理 VTT 字幕（单行压缩、按分段重新打时间戳等）"
+      },
+      "wechat": {
+        "description": "下载微信公众号文章为本地文档"
       }
     },
     "hooks": {

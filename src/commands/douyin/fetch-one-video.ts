@@ -4,7 +4,7 @@ import {FetchVideoWorkflow} from '../../lib/dyd/fetch-video-workflow.js'
 import {providers} from '../../lib/dyd/tikhub-providers.js'
 
 export default class DydFetchOneVideo extends Command {
-  static aliases = ["dyd:fov"]
+  static aliases = ["dy:fov"]
   static args = {
     input: Args.string({description: '抖音视频链接或分享文案', required: true}),
   }
