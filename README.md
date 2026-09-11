@@ -4,9 +4,9 @@
 [![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
 [![Version](https://img.shields.io/npm/v/@lppx/vptool.svg)](https://npmjs.org/package/@lppx/vptool)
 
-`vptool`（命令名 `vp`）是一个面向「视频 → 音频 → 字幕」全链路的命令行工具。它把日常反复用到的
-yt-dlp / ffmpeg 调用、抖音视频解析、VTT 字幕整理这些零散操作，收敛成一组带交互式选择的子命令，
-不用再记一长串参数。
+`vptool`（命令名 `vp`）是一个面向「视频 → 音频 → 字幕」全链路的命令行工具，同时也顺手收了
+「素材抓取」这一段。它把日常反复用到的 yt-dlp / ffmpeg 调用、抖音视频解析、微信公众号文章抓取、
+VTT 字幕整理这些零散操作，收敛成一组带交互式选择的子命令，不用再记一长串参数。
 
 # 安装方法
 
@@ -69,15 +69,30 @@ npm link          # 把 vp 链接到全局
 其中 `prefix` 是每次下载前交互选择的一级子目录，默认候选是 `x`。输入一个新值时会问你要不要
 存进配置的 `dlPrefix` 列表，下次直接从列表里选。
 
-## `vp dyd` — 抖音视频解析下载
+## `vp douyin` — 抖音视频解析下载
 
-`vp dyd fetch-one-video <INPUT>`（别名 `vp dyd fov`）：吃链接也吃整段分享文案（会自己把
+`vp douyin fetch-one-video <INPUT>`（别名 `vp dy fov`）：吃链接也吃整段分享文案（会自己把
 `https://v.douyin.com/...` 抠出来），通过 TikHub 接口解析后下载，并自动抽取音频。
 
 `--provider` 可以指定解析接口（`app-v1` / `app-v2` / `app-v3` / `app-share` / `web-share` /
 `web-v2` / `web-v1`）；不指定则进入交互式菜单。某个接口失效时换一个通常就能过。
 
 首次使用会提示输入 TikHub API Token，输入后写进配置文件，之后不再询问。
+
+## `vp wechat` — 微信公众号文章下载
+
+- `vp wechat mp dl <URL>`（别名 `vp wx mp dl` / `vp mp dl`）：把公众号文章正文抓成本地 txt。
+  `--provider` 指定解析接口（`tikhub-h5` 字段最全，`tikhub` 响应更快）；不指定时会进入交互式菜单。
+  `--output` 可以临时覆盖输出根目录。
+- `vp wechat mp opendir`（别名 `vp wx mp opendir` / `vp mp open`）：用系统文件管理器打开文章存放目录。
+
+保存路径按公众号自动分文件夹，文件名取「发布日期 + 标题」：
+
+```
+<documentsPath>/1111微信公众号/<公众号昵称>/<YYYY-MM-DD 文章标题>.txt
+```
+
+和 `vp douyin` 共用同一个 TikHub Token，首次使用同样会引导录入。
 
 ## `vp fft` — ffmpeg 音视频处理
 
@@ -138,15 +153,15 @@ profiles:
     dlPrefix:                                       # 下载时可选的一级子目录候选
       - tech
       - music
-    TIKHUB_IO_TOKEN: your-tikhub-token              # 抖音解析用的 API Token
+    TIKHUB_IO_TOKEN: your-tikhub-token              # 抖音 / 公众号解析用的 API Token
 ```
 
 字段含义：
 
-- `documentsPath`：工作目录。缺省时自动定位系统「文档」目录下的 `vptool` 子目录并创建
-  （Windows 走 PowerShell 读真实路径，支持目录重定向）。
-- `dlPrefix`：下载前 prefix 选择菜单的候选列表，由 `vp dl`/`vp dyd` 交互过程自动积累。
-- `TIKHUB_IO_TOKEN`：TikHub API Token，`vp dyd` 首次使用时会引导录入。
+- `documentsPath`：工作目录。所有下载、列举、公众号文章保存都以它为根。缺省时自动定位系统
+  「文档」目录下的 `vptool` 子目录并创建（Windows 走 PowerShell 读真实路径，支持目录重定向）。
+- `dlPrefix`：下载前 prefix 选择菜单的候选列表，由 `vp dl`/`vp douyin` 交互过程自动积累。
+- `TIKHUB_IO_TOKEN`：TikHub API Token，`vp douyin` 与 `vp wechat` 共用，首次使用时会引导录入。
 
 ## `logger.json`
 
@@ -183,11 +198,12 @@ npm run lint        # eslint
 * [`vp autocomplete`](docs/autocomplete.md) - Display autocomplete installation instructions.
 * [`vp config`](docs/config.md) - 查看与编辑用户配置文件（支持内置 TUI 与外部编辑器）
 * [`vp dl`](docs/dl.md) - 下载视频并管理本地依赖环境（基于 yt-dlp 与 ffmpeg）
-* [`vp dyd`](docs/dyd.md) - 解析并下载抖音视频（可自动抽取音频）
+* [`vp douyin`](docs/douyin.md) - 解析并下载抖音视频（可自动抽取音频）
 * [`vp fft`](docs/fft.md) - 基于 ffmpeg 的音视频处理（如从视频无损抽取音频）
 * [`vp help`](docs/help.md) - 显示帮助信息
 * [`vp version`](docs/version.md) - 显示版本信息
 * [`vp vtt`](docs/vtt.md) - 处理 VTT 字幕（单行压缩、按分段重新打时间戳等）
+* [`vp wechat`](docs/wechat.md) - 下载微信公众号文章为本地文档
 
 <!-- commandsstop -->
 

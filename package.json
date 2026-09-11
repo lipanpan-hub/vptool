@@ -88,7 +88,7 @@
       "dl": {
         "description": "下载视频并管理本地依赖环境（基于 yt-dlp 与 ffmpeg）"
       },
-      "dyd": {
+      "douyin": {
         "description": "解析并下载抖音视频（可自动抽取音频）"
       },
       "fft": {
