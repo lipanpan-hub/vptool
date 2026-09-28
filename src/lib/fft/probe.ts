@@ -43,7 +43,7 @@ export interface ProbeLogger {
 // #endregion
 
 // #region ffprobe 定位与执行
-function resolveFfprobePath(): string {
+export function resolveFfprobePath(): string {
   const ffmpegPath = helpers.findFFmpegBinary()
   if (!ffmpegPath) {
     throw new Error('未找到 ffprobe(需先下载 ffmpeg 套件), 无法查看媒体信息')
