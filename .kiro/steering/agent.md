@@ -29,3 +29,12 @@
 - 删除某个命令或功能时，除了删源码，还要检查 `package.json` 中有无对应的 npm scripts 需要一并删除。
 
 
+
+## 为 CLI 编写 agent skill 时以源码为准
+
+- README/docs 可能落后于代码（如 README 未列出 `fft probe/trim-silence/video-split-copy`），flag 默认值、产物路径、是否弹交互都要读 `src/commands` 与 `src/lib` 确认。
+- 重点标出哪些命令会触发交互提示、用什么参数跳过、哪些无法跳过必须交给用户执行；Agent 终端不是 TTY，不能靠管道应答提示。
+
+## 解析第三方库输出前先实测一次
+
+- 封装库可能改掉底层 CLI 的输出格式（如 ytdlp-nodejs 注入 `--progress-template`），按原生 CLI 的日志格式写正则会静默失效。先跑一次真实命令确认输出，再决定从哪里取数据。
