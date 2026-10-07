@@ -86,6 +86,17 @@ function runFfprobe(mediaPath: string): Promise<FfprobeResult> {
     })
   })
 }
+
+// 读取媒体时长(秒), 供需要按时长推算的处理流程使用
+export async function readDuration(mediaPath: string): Promise<number> {
+  const result = await runFfprobe(mediaPath)
+  const duration = Number(result.format?.duration)
+  if (!Number.isFinite(duration) || (duration <= 0)) {
+    throw new Error(`无法获取媒体时长: ${mediaPath}`)
+  }
+
+  return duration
+}
 // #endregion
 
 // #region 格式化辅助

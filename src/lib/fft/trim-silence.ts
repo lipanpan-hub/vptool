@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process'
 import {helpers} from 'ytdlp-nodejs'
 
-import {resolveFfprobePath} from './probe.js'
+import {readDuration} from './probe.js'
 
 // #region 类型定义
 export interface AudioSegment {
@@ -72,23 +72,6 @@ function requireFfmpeg(): string {
 // #endregion
 
 // #region 探测与检测
-async function readDuration(audioPath: string): Promise<number> {
-  const {stdout} = await runCapture(resolveFfprobePath(), [
-    '-v', 'error',
-    '-print_format', 'json',
-    '-show_entries', 'format=duration',
-    audioPath,
-  ])
-
-  const parsed = JSON.parse(stdout) as {format?: {duration?: string}}
-  const duration = Number(parsed.format?.duration)
-  if (!Number.isFinite(duration) || (duration <= 0)) {
-    throw new Error(`无法获取音频时长: ${audioPath}`)
-  }
-
-  return duration
-}
-
 // 从 silencedetect 的 stderr 输出中解析静音区间
 export function parseSilences(stderr: string): AudioSegment[] {
   const silences: AudioSegment[] = []
