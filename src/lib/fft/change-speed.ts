@@ -48,17 +48,17 @@ export function buildSpeedChangedPath(audioPath: string, speed: number): string 
 
 // #region 调速
 // 借助 atempo 变速不变调, 只重编码音频, 丢弃可能内嵌的封面等视频流
+// outputPath 缺省时按倍率命名到源文件旁, 指定时则原样使用
 export async function changeAudioSpeed(
   audioPath: string,
   speed: number,
   logger?: {log: (message: string) => void},
+  outputPath: string = buildSpeedChangedPath(audioPath, speed),
 ): Promise<string> {
   const ffmpegPath = helpers.findFFmpegBinary()
   if (!ffmpegPath) {
     throw new Error('未找到 ffmpeg, 无法对音频调速')
   }
-
-  const outputPath = buildSpeedChangedPath(audioPath, speed)
 
   // #region 预测输出时长
   // 倍速与时长成反比, 用源时长除以倍率即可预测(实际值受编码器对齐影响会有毫秒级偏差)

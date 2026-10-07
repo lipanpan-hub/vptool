@@ -1,7 +1,7 @@
 // 这个命令的作用是借助 ffmpeg atempo 对音频调速(变速不变调)
 // 扫描当前目录让用户交互式选择音频, 再输入速度倍率后执行
 
-import {Args, Command} from '@oclif/core'
+import {Args, Command, Flags} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
@@ -23,11 +23,18 @@ export default class FftChangeSpeed extends Command {
   static examples = [
     '<%= config.bin %> <%= command.id %> input.mp3 1.5',
     '<%= config.bin %> <%= command.id %> input.mp3 0.8',
+    '<%= config.bin %> <%= command.id %> input.mp3 1.5 -o fast.mp3',
+    '<%= config.bin %> <%= command.id %> input.mp3 1.5 -f',
     '<%= config.bin %> <%= command.id %>',
   ]
 
+  static flags = {
+    force: Flags.boolean({char: 'f', description: '输出文件已存在时直接覆盖, 不再询问'}),
+    output: Flags.string({char: 'o', description: '输出文件路径(默认在源文件旁生成带倍率后缀的新文件)'}),
+  }
+
   public async run(): Promise<void> {
-    const {args} = await this.parse(FftChangeSpeed)
+    const {args, flags} = await this.parse(FftChangeSpeed)
 
     // #region 选择源音频
     const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要调速的音频文件:'))
@@ -42,9 +49,10 @@ export default class FftChangeSpeed extends Command {
     }
     // #endregion
 
-    // #region 输出已存在时先询问是否覆盖
-    const outputPath = buildSpeedChangedPath(audioPath, speed)
-    if (existsSync(outputPath)) {
+    // #region 输出已存在时按 --force 决定是否覆盖
+    const outputPath = flags.output ?? buildSpeedChangedPath(audioPath, speed)
+    // 未指定 --force 时先询问, 指定后直接覆盖
+    if (existsSync(outputPath) && !flags.force) {
       const {overwrite} = await prompts({
         message: `${outputPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -59,7 +67,7 @@ export default class FftChangeSpeed extends Command {
 
     // #region 执行调速
     this.log(`正在把 ${audioPath} 调速到 ${formatSpeed(speed)}x...`)
-    await changeAudioSpeed(audioPath, speed, this)
+    await changeAudioSpeed(audioPath, speed, this, outputPath)
     // #endregion
   }
 
