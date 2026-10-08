@@ -97,6 +97,15 @@ export async function readDuration(mediaPath: string): Promise<number> {
 
   return duration
 }
+
+// 读取第一条音频流的编码名(如 aac/opus), 无音频流时返回 null
+// 供需要按容器约束决定音频能否直接复制的流程使用
+export async function readAudioCodec(mediaPath: string): Promise<null | string> {
+  const result = await runFfprobe(mediaPath)
+  const audioStream = result.streams?.find((stream) => stream.codec_type === 'audio')
+
+  return audioStream?.codec_name ?? null
+}
 // #endregion
 
 // #region 格式化辅助
