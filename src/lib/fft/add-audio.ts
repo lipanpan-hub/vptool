@@ -1,15 +1,16 @@
 import {spawn} from 'node:child_process'
+import {renameSync} from 'node:fs'
 import {helpers} from 'ytdlp-nodejs'
 
-// #region 输出路径计算
-export function buildMergedPath(videoPath: string): string {
-  // 保留原容器扩展名, 输出到同目录带 .merged 后缀的新文件, 不覆盖源视频
-  return videoPath.replace(/(\.[^.]+)$/, '.merged$1')
+// #region 路径计算
+// 源视频改名后的存放位置: video.mp4 -> video.old.mp4, 保留原容器扩展名
+export function buildBackupPath(videoPath: string): string {
+  return videoPath.replace(/(\.[^.]+)$/, '.old$1')
 }
 // #endregion
 
 // #region 合并
-// 把新音轨加入视频: 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
+// 先把源视频改名为 .old 备份, 合并结果占用原文件名: 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
 export async function addAudioToVideo(
   videoPath: string,
   audioPath: string,
@@ -20,14 +21,39 @@ export async function addAudioToVideo(
     throw new Error('未找到 ffmpeg, 无法合并音频')
   }
 
-  const outputPath = buildMergedPath(videoPath)
+  // #region 源视频改名, 腾出原名给合并结果
+  const backupPath = buildBackupPath(videoPath)
+  renameSync(videoPath, backupPath)
+  // #endregion
 
+  // #region 执行合并
+  try {
+    await runMerge(ffmpegPath, backupPath, audioPath, videoPath)
+  } catch (error) {
+    // 合并失败时把源视频改回原名, 避免改名残留
+    renameSync(backupPath, videoPath)
+    throw error
+  }
+  // #endregion
+
+  logger?.log(`源视频已备份为: ${backupPath}`)
+  logger?.log(`已生成: ${videoPath}`)
+  return videoPath
+}
+
+// 以备份后的源视频为输入调用 ffmpeg, 输出占用原文件名
+function runMerge(
+  ffmpegPath: string,
+  inputPath: string,
+  audioPath: string,
+  outputPath: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, [
       // -v error 只保留真正的错误, 屏蔽 -disposition 重复设置产生的无害警告
       '-v', 'error',
       '-y',
-      '-i', videoPath,
+      '-i', inputPath,
       '-i', audioPath,
       // 新音轨先映射, 成为输出中的第 0 条音轨(排在最前)
       '-map', '1:a:0',
@@ -49,8 +75,7 @@ export async function addAudioToVideo(
     proc.on('error', reject)
     proc.on('close', (code) => {
       if (code === 0) {
-        logger?.log(`已生成: ${outputPath}`)
-        resolve(outputPath)
+        resolve()
       } else {
         reject(new Error(`ffmpeg 合并音频失败 (退出码 ${code}): ${stderr.trim()}`))
       }
