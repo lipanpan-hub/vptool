@@ -7,10 +7,17 @@ import {helpers} from 'ytdlp-nodejs'
 export function buildBackupPath(videoPath: string): string {
   return videoPath.replace(/(\.[^.]+)$/, '.old$1')
 }
+
+// buildBackupPath 的逆操作: 文件名带 .old. 段时视为备份文件, 还原为不带 old 的名字: video.old.mp4 -> video.mp4
+export function buildOriginalPath(videoPath: string): string {
+  return videoPath.replace(/\.old(\.[^.]+)$/, '$1')
+}
 // #endregion
 
 // #region 合并
-// 先把源视频改名为 .old 备份, 合并结果占用原文件名: 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
+// 源名不带 .old. 时: 先把源视频改名为 .old 备份, 合并结果占用原文件名
+// 源名带 .old. 时: 视源视频为备份文件, 不再改名, 合并结果直接占用去 old 后的名字
+// 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
 export async function addAudioToVideo(
   videoPath: string,
   audioPath: string,
@@ -21,27 +28,32 @@ export async function addAudioToVideo(
     throw new Error('未找到 ffmpeg, 无法合并音频')
   }
 
-  // #region 源视频改名, 腾出原名给合并结果
-  const backupPath = buildBackupPath(videoPath)
-  renameSync(videoPath, backupPath)
+  // #region 计算路径: 结果占用原名时才走改名备份流程
+  const outputPath = buildOriginalPath(videoPath)
+  const isBackupMode = (outputPath === videoPath)
+  const mergeInputPath = isBackupMode ? buildBackupPath(videoPath) : videoPath
+  // #endregion
+
+  // #region 备份模式下把源视频改名为 .old, 腾出原名给合并结果
+  if (isBackupMode) renameSync(videoPath, mergeInputPath)
   // #endregion
 
   // #region 执行合并
   try {
-    await runMerge(ffmpegPath, backupPath, audioPath, videoPath)
+    await runMerge(ffmpegPath, mergeInputPath, audioPath, outputPath)
   } catch (error) {
-    // 合并失败时把源视频改回原名, 避免改名残留
-    renameSync(backupPath, videoPath)
+    // 备份模式合并失败时把源视频改回原名, 避免改名残留
+    if (isBackupMode) renameSync(mergeInputPath, videoPath)
     throw error
   }
   // #endregion
 
-  logger?.log(`源视频已备份为: ${backupPath}`)
-  logger?.log(`已生成: ${videoPath}`)
-  return videoPath
+  if (isBackupMode) logger?.log(`源视频已备份为: ${mergeInputPath}`)
+  logger?.log(`已生成: ${outputPath}`)
+  return outputPath
 }
 
-// 以备份后的源视频为输入调用 ffmpeg, 输出占用原文件名
+// 以源视频(或其备份)为输入调用 ffmpeg, 输出到合并结果路径
 function runMerge(
   ffmpegPath: string,
   inputPath: string,
