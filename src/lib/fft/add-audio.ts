@@ -1,8 +1,10 @@
 import {spawn} from 'node:child_process'
 import {existsSync, renameSync, rmSync} from 'node:fs'
+import {extname} from 'node:path'
 import {helpers} from 'ytdlp-nodejs'
 
 import {burnSubtitle, buildBurnedPath} from './burn-subtitle.js'
+import {readAudioCodec} from './probe.js'
 
 // #region 路径计算
 // 源视频改名后的存放位置: video.mp4 -> video.old.mp4, 保留原容器扩展名
@@ -72,13 +74,24 @@ export async function addAudioToVideo(
 }
 
 // 以源视频(或其备份)为输入调用 ffmpeg, 输出到合并结果路径
-function runMerge(
+async function runMerge(
   ffmpegPath: string,
   inputPath: string,
   audioPath: string,
   outputPath: string,
 ): Promise<void> {
+  // WebM 容器只允许 Vorbis/Opus 音频, WAV 等 PCM 格式必须转码
+  const WEBM_AUDIO_CODECS = new Set(['opus', 'vorbis'])
+  const outputExt = extname(outputPath).toLowerCase()
+  const isWebmOutput = (outputExt === '.webm')
+  const sourceAudioCodec = await readAudioCodec(audioPath)
+  const isAudioCopyable = !isWebmOutput || ((sourceAudioCodec !== null) && WEBM_AUDIO_CODECS.has(sourceAudioCodec))
+
   return new Promise((resolve, reject) => {
+    const audioArgs = isAudioCopyable
+      ? ['-c:a', 'copy']
+      : ['-c:a:0', 'libopus', '-b:a:0', '128k', '-c:a:1', 'copy']
+
     const proc = spawn(ffmpegPath, [
       // -v error 只保留真正的错误, 屏蔽 -disposition 重复设置产生的无害警告
       '-v', 'error',
@@ -89,8 +102,10 @@ function runMerge(
       '-map', '1:a:0',
       // 再映射源视频全部流, 原视频/原声轨一条不动地保留
       '-map', '0',
-      // 全部直接拷贝, 不重编码
-      '-c', 'copy',
+      // 视频和字幕直接拷贝, 不重编码
+      '-c:v', 'copy',
+      '-c:s', 'copy',
+      ...audioArgs,
       // 先清空所有音轨的默认标记(覆盖原声轨), 再把新音轨单独设为默认
       '-disposition:a', '0',
       '-disposition:a:0', 'default',
