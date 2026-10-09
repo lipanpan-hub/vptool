@@ -1,6 +1,8 @@
 import {spawn} from 'node:child_process'
-import {renameSync} from 'node:fs'
+import {existsSync, renameSync, rmSync} from 'node:fs'
 import {helpers} from 'ytdlp-nodejs'
+
+import {burnSubtitle, buildBurnedPath} from './burn-subtitle.js'
 
 // #region 路径计算
 // 源视频改名后的存放位置: video.mp4 -> video.old.mp4, 保留原容器扩展名
@@ -14,13 +16,22 @@ export function buildOriginalPath(videoPath: string): string {
 }
 // #endregion
 
+// #region 类型定义
+export interface AddAudioOptions {
+  // 要烧写进合并结果的 vtt 字幕文件; 提供时合并后重编码烧写, 再用烧写结果替换合并结果
+  subtitlePath?: string
+}
+// #endregion
+
 // #region 合并
 // 源名不带 .old. 时: 先把源视频改名为 .old 备份, 合并结果占用原文件名
 // 源名带 .old. 时: 视源视频为备份文件, 不再改名, 合并结果直接占用去 old 后的名字
 // 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
+// 传入 subtitlePath 时合并后把字幕烧写进合并结果(视频重编码)
 export async function addAudioToVideo(
   videoPath: string,
   audioPath: string,
+  options: AddAudioOptions = {},
   logger?: {log: (message: string) => void},
 ): Promise<string> {
   const ffmpegPath = helpers.findFFmpegBinary()
@@ -45,6 +56,13 @@ export async function addAudioToVideo(
     // 备份模式合并失败时把源视频改回原名, 避免改名残留
     if (isBackupMode) renameSync(mergeInputPath, videoPath)
     throw error
+  }
+  // #endregion
+
+  // #region 按需把字幕烧写进合并结果
+  if (options.subtitlePath) {
+    await burnSubtitleIntoOutput(outputPath, options.subtitlePath)
+    logger?.log(`字幕已烧写进: ${outputPath}`)
   }
   // #endregion
 
@@ -93,5 +111,23 @@ function runMerge(
       }
     })
   })
+}
+// #endregion
+
+// #region 烧写字幕
+// 把字幕烧写进合并结果: 先烧到 .burned 中间文件, 成功后替换合并结果, 输出文件名保持不变
+async function burnSubtitleIntoOutput(outputPath: string, subtitlePath: string): Promise<void> {
+  const burnedPath = buildBurnedPath(outputPath)
+  try {
+    // 不传 logger: "已生成"由替换完成后统一输出, 避免中间文件名误导
+    await burnSubtitle(outputPath, subtitlePath, {outputPath: burnedPath})
+  } catch (error) {
+    // 烧写失败时清理半成品, 合并结果原样保留
+    if (existsSync(burnedPath)) rmSync(burnedPath)
+    throw error
+  }
+
+  rmSync(outputPath)
+  renameSync(burnedPath, outputPath)
 }
 // #endregion
