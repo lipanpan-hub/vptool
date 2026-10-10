@@ -53,4 +53,6 @@ for (const [name, ok] of checks) {
 }
 
 console.log(failed === 0 ? '\n全部通过' : `\n失败 ${failed} 项`)
-process.exit(failed === 0 ? 0 : 1)
+if (failed > 0) {
+  throw new Error(`自测失败 ${failed} 项`)
+}

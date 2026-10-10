@@ -38,4 +38,11 @@ export default [
       'n/no-unsupported-features/node-builtins': 'off',
     },
   },
+  {
+    // 命名类: 测试夹具需镜像 yt-dlp JSON 形状(automatic_captions 等 snake_case 字段名不可改动), 只放宽属性名检查
+    files: ['test/**', 'testmp/**'],
+    rules: {
+      camelcase: ['error', {properties: 'never'}],
+    },
+  },
 ]

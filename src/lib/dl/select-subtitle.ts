@@ -9,6 +9,15 @@ interface SubtitleChoice {
 
 type SubtitleMap = Record<string, {ext: string; name: string; url: string}[]> | undefined
 
+// 自动英文字幕语言优先级: en-orig 是 YouTube 的 "English (Original)" 原声 ASR 轨, 缺失时回退 en
+const AUTO_EN_SUBTITLE_LANG_PRIORITY = ['en-orig', 'en']
+
+// 按优先级挑出视频可用的自动英文字幕语言, 都没有时返回 undefined
+export function resolveAutoEnglishSubtitleLang(videoInfo: VideoInfo): string | undefined {
+  const autoCaptions = videoInfo.automatic_captions ?? {}
+  return AUTO_EN_SUBTITLE_LANG_PRIORITY.find((lang) => autoCaptions[lang])
+}
+
 // 把字幕表转换成选项, 已在 seenLangs 中出现的语言不再重复列出(yt-dlp 同语言会优先下载人工字幕)
 function toChoices(subtitleMap: SubtitleMap, label: string, seenLangs: Set<string>): SubtitleChoice[] {
   const choices: SubtitleChoice[] = []

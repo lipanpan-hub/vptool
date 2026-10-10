@@ -2,8 +2,8 @@ import {runHook} from '@oclif/test'
 import {expect} from 'chai'
 
 describe('hooks', () => {
-  it('shows a message', async () => {
+  it('输出配置文件路径', async () => {
     const {stdout} = await runHook('init', {id: 'mycommand'})
-    expect(stdout).to.contain('example hook running mycommand')
+    expect(stdout).to.contain('config.yml')
   })
 })

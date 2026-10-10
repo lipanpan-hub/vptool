@@ -6,6 +6,7 @@ import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
 import {selectPrefix} from '../../lib/dl/select-prefix.js'
+import {resolveAutoEnglishSubtitleLang} from '../../lib/dl/select-subtitle.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
 export default class DlVideo extends Command {
@@ -27,7 +28,7 @@ export default class DlVideo extends Command {
     best: Flags.boolean({
       char: 'b',
       default: false,
-      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg）',
+      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕，优先 en-orig，缺失回退 en）',
     }),
     'format-id': Flags.string({
       char: 'f',
@@ -83,8 +84,14 @@ export default class DlVideo extends Command {
       const prefix = await selectPrefix(this.config.configDir)
       const outputDir = join(baseOutputDir, prefix)
 
+      // --best 且为 YouTube 时自动附带英文字幕: 优先 en-orig(原声 ASR), 缺失回退 en
+      const autoSubtitleLang = (best && videoInfo.extractor_key === 'Youtube')
+        ? resolveAutoEnglishSubtitleLang(videoInfo)
+        : undefined
+
       // 下载视频
       await downloadVideo(videoUrl, {
+        autoSubtitleLang,
         extractAudio: keepAudio,
         formatId: selectedFormatId,
         outputDir,

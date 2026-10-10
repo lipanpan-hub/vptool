@@ -8,6 +8,7 @@
 * [`vp dl check`](#vp-dl-check)
 * [`vp dl list`](#vp-dl-list)
 * [`vp dl open`](#vp-dl-open)
+* [`vp dl sub URL`](#vp-dl-sub-url)
 * [`vp dl updatebin`](#vp-dl-updatebin)
 * [`vp dl video URL`](#vp-dl-video-url)
 * [`vp dl vmeta URL`](#vp-dl-vmeta-url)
@@ -24,7 +25,8 @@ ARGUMENTS
   URL  视频链接
 
 FLAGS
-  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg）
+  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
+                           视频自动附带英文字幕，优先 en-orig，缺失回退 en）
   -c, --use-cookies        从 Firefox 浏览器获取 cookies
   -f, --format-id=<value>  指定格式ID（跳过交互式选择）
   -k, --keep-audio         在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
@@ -130,6 +132,36 @@ EXAMPLES
 
 _See code: [src/commands/dl/open.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/dl/open.ts)_
 
+## `vp dl sub URL`
+
+下载视频字幕（包含自动生成字幕，默认 vtt 格式）
+
+```
+USAGE
+  $ vp dl sub URL [--auto] [-l <value>] [-o <value>] [-c]
+
+ARGUMENTS
+  URL  视频链接
+
+FLAGS
+  -c, --use-cookies     从 Firefox 浏览器获取 cookies
+  -l, --lang=<value>    字幕语言代码, 多个用逗号分隔, 如 en,zh-Hans（跳过交互式选择）
+  -o, --output=<value>  输出目录（默认为执行命令时的当前目录）
+      --[no-]auto       包含自动生成字幕（--no-auto 只下载人工字幕）
+
+DESCRIPTION
+  下载视频字幕（包含自动生成字幕，默认 vtt 格式）
+
+EXAMPLES
+  $ vp dl sub https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+  $ vp dl sub https://www.youtube.com/watch?v=dQw4w9WgXcQ -l en,zh-Hans -o ~/Downloads
+
+  $ vp dl sub https://www.youtube.com/watch?v=dQw4w9WgXcQ -l en --no-auto
+```
+
+_See code: [src/commands/dl/sub.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/dl/sub.ts)_
+
 ## `vp dl updatebin`
 
 将本地 yt-dlp 二进制更新到最新版本
@@ -159,7 +191,8 @@ ARGUMENTS
   URL  视频链接
 
 FLAGS
-  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg）
+  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
+                           视频自动附带英文字幕，优先 en-orig，缺失回退 en）
   -c, --use-cookies        从 Firefox 浏览器获取 cookies
   -f, --format-id=<value>  指定格式ID（跳过交互式选择）
   -k, --keep-audio         在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
