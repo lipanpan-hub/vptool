@@ -42,6 +42,8 @@ export interface DownloadVideoOptions {
   formatId: string
   outputDir: string
   useCookies: boolean
+  // 随视频一起下载简介(.description 文件, 与视频同名), 不需要时省略
+  writeDescription?: boolean
 }
 
 export async function downloadVideo(
@@ -49,7 +51,7 @@ export async function downloadVideo(
   options: DownloadVideoOptions,
   logger?: {log: (message: string) => void}
 ): Promise<void> {
-  const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies} = options
+  const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies, writeDescription} = options
 
   logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
   logger?.log(`保存位置: ${outputDir}\n`)
@@ -59,6 +61,10 @@ export async function downloadVideo(
 
   if (autoSubtitleLang) {
     logger?.log(`📝 将附带下载自动生成字幕 (语言: ${autoSubtitleLang})\n`)
+  }
+
+  if (writeDescription) {
+    logger?.log(`📄 将附带下载视频简介\n`)
   }
 
   const ytdlp = new YtDlp()
@@ -109,6 +115,11 @@ export async function downloadVideo(
     // 自动字幕与视频同目录同名落盘(如 "标题.en-orig.vtt"), 格式优先 vtt
     if (autoSubtitleLang) {
       builder.writeAutoSubs().subLangs([autoSubtitleLang]).addOption('subFormat', 'vtt/best')
+    }
+
+    // 视频简介与视频同目录同名落盘(如 "标题.description")
+    if (writeDescription) {
+      builder.addOption('writeDescription', true)
     }
 
     if (useCookies) {
