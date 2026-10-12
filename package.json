@@ -85,6 +85,9 @@
       "config": {
         "description": "查看与编辑用户配置文件（支持内置 TUI 与外部编辑器）"
       },
+      "auc": {
+        "description": "管理 audiocpp 语音服务（启停 audiocpp_server、模型装卸、语音转写/字幕/合成）"
+      },
       "dl": {
         "description": "下载视频并管理本地依赖环境（基于 yt-dlp 与 ffmpeg）"
       },

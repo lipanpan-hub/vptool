@@ -88,6 +88,22 @@ export class ToolConfigManager extends ConfigManager<Profile> {
   }
 
   /**
+   * 读取当前档案的 audiocpp 包目录路径, 未配置返回 `null`。
+   */
+  getAudioCppDir(): null | string {
+    return this.getCurrentProfile()?.audioCppDir || null
+  }
+
+  /**
+   * 写入 audiocpp 包目录路径到当前档案; 若无当前档案则创建默认档案。
+   */
+  setAudioCppDir(audioCppDir: string): void {
+    if (!this.updateCurrentProfile({audioCppDir})) {
+      this.upsertProfile(this.buildDefaultProfile({audioCppDir}), true)
+    }
+  }
+
+  /**
    * 读取当前档案的下载前缀列表, 未配置返回空数组。
    */
   getDlPrefix(): string[] {
