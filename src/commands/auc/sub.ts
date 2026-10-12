@@ -7,7 +7,7 @@ import {AudioCppClient, type AlignedWord} from '../../lib/auc/audiocpp-client.js
 import {cutWavChunk, offsetAlignedWords, planAudioChunks} from '../../lib/auc/audio-chunk.js'
 import {prepareMono16kWav} from '../../lib/auc/audio-preprocess.js'
 import {listModelCandidates} from '../../lib/auc/model-locator.js'
-import {createSubtitleFormatter, splitWordsIntoCues, type CueSplitOptions} from '../../lib/auc/subtitle-builder.js'
+import {buildSingleCue, createSubtitleFormatter} from '../../lib/auc/subtitle-builder.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
@@ -18,11 +18,11 @@ const MEDIA_EXTENSIONS = [
 ]
 
 export default class AucSub extends BaseCommand {
-  static description = '为音视频生成字幕文件(转写 + 强制对齐, 输出 VTT/SRT, 需已装载 ASR 与对齐模型; 不传文件时交互式选择)'
+  static description = '为音视频生成字幕文件(转写 + 强制对齐, 整段单条输出 VTT/SRT 不分段, 需已装载 ASR 与对齐模型; 不传文件时交互式选择)'
 
   static examples = [
     '<%= config.bin %> <%= command.id %> video.mp4',
-    '<%= config.bin %> <%= command.id %> video.mp4 --format srt --max-chars 14 --max-seconds 4',
+    '<%= config.bin %> <%= command.id %> video.mp4 --format srt',
     '<%= config.bin %> <%= command.id %> video.mp4 --auto-load',
     '<%= config.bin %> <%= command.id %>',
   ]
@@ -38,11 +38,9 @@ export default class AucSub extends BaseCommand {
     'align-model': Flags.string({description: '强制对齐模型 id', default: 'qwen3_forced_aligner'}),
     language: Flags.string({description: '音频语言代码', default: 'zh'}),
     format: Flags.string({description: '字幕格式: vtt | srt', default: 'vtt'}),
-    'max-chars': Flags.integer({description: '单条字幕最大字符数', default: 18}),
-    'max-seconds': Flags.integer({description: '单条字幕最大时长(秒)', default: 5}),
     out: Flags.string({description: '字幕输出路径(缺省与源文件同名)'}),
-    // 开启时把每条字幕文本逐行抽出, 写成与字幕同名的 .txt 纯文本文档
-    txt: Flags.boolean({description: '同时生成同名 txt 纯文本文档(每条字幕一行)', default: false}),
+    // 开启时把整段转写文本写成与字幕同名的 .txt 纯文本文档(单段, 不分行)
+    txt: Flags.boolean({description: '同时生成同名 txt 纯文本文档(整段)', default: false}),
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
     // 开启时自动就绪所需模型: 先卸载其他已加载模型腾出显存, ASR 与对齐模型未装载则自动装载
     'auto-load': Flags.boolean({description: '自动装载所需模型(卸载其他已加载模型, 再装载 ASR 与对齐模型)', default: true}),
@@ -104,19 +102,21 @@ export default class AucSub extends BaseCommand {
       }
       // #endregion
 
-      // #region 分段并写出字幕
-      const splitOptions: CueSplitOptions = {maxChars: flags['max-chars'], maxSeconds: flags['max-seconds']}
-      const cues = splitWordsIntoCues(alignedWords, splitOptions)
-      const subtitleContent = createSubtitleFormatter(flags.format).format(cues)
+      // #region 整段写出字幕(全部词合并为单条 cue, 不分段)
+      if (alignedWords.length === 0) {
+        this.error('未获得任何词级对齐结果, 无法生成字幕')
+      }
+      const singleCue = buildSingleCue(alignedWords)
+      const subtitleContent = createSubtitleFormatter(flags.format).format([singleCue])
 
       const outputPath = flags.out ?? buildDefaultSubtitlePath(sourceFile, flags.format)
       writeFileSync(outputPath, subtitleContent, 'utf8')
-      this.log(`已生成字幕(${cues.length} 条): ${outputPath}`)
+      this.log(`已生成字幕(整段单条): ${outputPath}`)
 
       if (flags.txt) {
         const textPath = buildSidecarTextPath(outputPath)
-        writeFileSync(textPath, buildPlainTextContent(cues), 'utf8')
-        this.log(`已生成纯文本文档(${cues.length} 行): ${textPath}`)
+        writeFileSync(textPath, `${singleCue.text}\n`, 'utf8')
+        this.log(`已生成纯文本文档(整段): ${textPath}`)
       }
       // #endregion
     } finally {
@@ -133,11 +133,6 @@ function buildDefaultSubtitlePath(sourceFile: string, formatName: string): strin
 // 纯文本文档路径: 与字幕文件同目录同名, 扩展名替换为 txt
 function buildSidecarTextPath(subtitlePath: string): string {
   return join(dirname(subtitlePath), `${basename(subtitlePath, extname(subtitlePath))}.txt`)
-}
-
-// 纯文本文档内容: 每条字幕文本独占一行
-function buildPlainTextContent(cues: {text: string}[]): string {
-  return `${cues.map((cue) => cue.text).join('\n')}\n`
 }
 
 // 自动就绪 sub 所需的 ASR 与对齐模型:

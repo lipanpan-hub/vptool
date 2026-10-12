@@ -12,70 +12,19 @@ export interface SubtitleCue {
 }
 
 /**
- * 分段选项
+ * 将全部词级时间戳合并为单条 cue(不做分段): 时间覆盖首词到末词, 文本为全部词拼接,
+ * 并保留词级数据供 VTT 输出内联时间戳标记。
  */
-export interface CueSplitOptions {
-  // 单条字幕最大字符数(中文字符按 1 计)
-  maxChars: number
-  // 单条字幕最大时长(秒)
-  maxSeconds: number
-}
-
-// 强标点: 出现即结束当前 cue
-const STRONG_PUNCTUATION = new Set(['；', '!', ',', ';', '！', '?', '？', '.', '。'])
-// 弱标点: 当前 cue 已达软上限时才结束
-const SOFT_PUNCTUATION = new Set(['，', '、', ':', '：', '……'])
-
-const DEFAULT_CUE_SPLIT_OPTIONS: CueSplitOptions = {maxChars: 18, maxSeconds: 5}
-
-/**
- * 将词级时间戳切分为字幕 cue(分段器):
- * 规则从强到弱 —— 强标点立即收尾; 弱标点达软上限收尾; 字符数/时长硬上限强制收尾。
- */
-export function splitWordsIntoCues(words: AlignedWord[], options: CueSplitOptions = DEFAULT_CUE_SPLIT_OPTIONS): SubtitleCue[] {
-  const cues: SubtitleCue[] = []
-  let currentWords: AlignedWord[] = []
-
-  const flushCurrentCue = (): void => {
-    const firstWord = currentWords[0]
-    const lastWord = currentWords.at(-1)
-    if ((firstWord === undefined) || (lastWord === undefined)) {
-      return
-    }
-    cues.push({
-      startSeconds: firstWord.start,
-      endSeconds: lastWord.end,
-      text: joinCueWords(currentWords),
-      words: [...currentWords],
-    })
-    currentWords = []
+export function buildSingleCue(words: AlignedWord[]): SubtitleCue {
+  // 调用方(sub 命令)已保证 words 非空
+  const firstWord = words[0]
+  const lastWord = words.at(-1) as AlignedWord
+  return {
+    startSeconds: firstWord.start,
+    endSeconds: lastWord.end,
+    text: joinCueWords(words),
+    words: [...words],
   }
-
-  for (const word of words) {
-    currentWords.push(word)
-
-    const cueText = joinCueWords(currentWords)
-    const cueSeconds = word.end - currentWords[0].start
-    // 硬上限: 字符数或时长任一超出即强制收尾
-    const isHardLimitReached = (cueText.length >= options.maxChars) || (cueSeconds >= options.maxSeconds)
-
-    if (STRONG_PUNCTUATION.has(word.word)) {
-      flushCurrentCue()
-      continue
-    }
-    // 弱标点 + 软上限(硬上限的 2/3)才收尾, 避免碎片化
-    const isSoftLimitReached = cueText.length >= Math.floor(options.maxChars * (2 / 3))
-    if (SOFT_PUNCTUATION.has(word.word) && isSoftLimitReached) {
-      flushCurrentCue()
-      continue
-    }
-    if (isHardLimitReached) {
-      flushCurrentCue()
-    }
-  }
-
-  flushCurrentCue()
-  return cues
 }
 
 /**
