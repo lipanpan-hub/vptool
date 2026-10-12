@@ -41,6 +41,8 @@ export default class AucSub extends BaseCommand {
     'max-chars': Flags.integer({description: '单条字幕最大字符数', default: 18}),
     'max-seconds': Flags.integer({description: '单条字幕最大时长(秒)', default: 5}),
     out: Flags.string({description: '字幕输出路径(缺省与源文件同名)'}),
+    // 开启时把每条字幕文本逐行抽出, 写成与字幕同名的 .txt 纯文本文档
+    txt: Flags.boolean({description: '同时生成同名 txt 纯文本文档(每条字幕一行)', default: false}),
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
     // 开启时自动就绪所需模型: 先卸载其他已加载模型腾出显存, ASR 与对齐模型未装载则自动装载
     'auto-load': Flags.boolean({description: '自动装载所需模型(卸载其他已加载模型, 再装载 ASR 与对齐模型)', default: true}),
@@ -110,6 +112,12 @@ export default class AucSub extends BaseCommand {
       const outputPath = flags.out ?? buildDefaultSubtitlePath(sourceFile, flags.format)
       writeFileSync(outputPath, subtitleContent, 'utf8')
       this.log(`已生成字幕(${cues.length} 条): ${outputPath}`)
+
+      if (flags.txt) {
+        const textPath = buildSidecarTextPath(outputPath)
+        writeFileSync(textPath, buildPlainTextContent(cues), 'utf8')
+        this.log(`已生成纯文本文档(${cues.length} 行): ${textPath}`)
+      }
       // #endregion
     } finally {
       await preparedAudio.cleanup()
@@ -120,6 +128,16 @@ export default class AucSub extends BaseCommand {
 // 缺省输出路径: 与源文件同目录同名, 扩展名替换为字幕格式
 function buildDefaultSubtitlePath(sourceFile: string, formatName: string): string {
   return join(dirname(sourceFile), `${basename(sourceFile, extname(sourceFile))}.${formatName}`)
+}
+
+// 纯文本文档路径: 与字幕文件同目录同名, 扩展名替换为 txt
+function buildSidecarTextPath(subtitlePath: string): string {
+  return join(dirname(subtitlePath), `${basename(subtitlePath, extname(subtitlePath))}.txt`)
+}
+
+// 纯文本文档内容: 每条字幕文本独占一行
+function buildPlainTextContent(cues: {text: string}[]): string {
+  return `${cues.map((cue) => cue.text).join('\n')}\n`
 }
 
 // 自动就绪 sub 所需的 ASR 与对齐模型:
