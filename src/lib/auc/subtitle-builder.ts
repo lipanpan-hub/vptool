@@ -7,6 +7,8 @@ export interface SubtitleCue {
   startSeconds: number
   endSeconds: number
   text: string
+  // 组成本条 cue 的词级数据(可选; VTT 输出内联词级时间戳标记用)
+  words?: AlignedWord[]
 }
 
 /**
@@ -44,6 +46,7 @@ export function splitWordsIntoCues(words: AlignedWord[], options: CueSplitOption
       startSeconds: firstWord.start,
       endSeconds: lastWord.end,
       text: joinCueWords(currentWords),
+      words: [...currentWords],
     })
     currentWords = []
   }
@@ -81,11 +84,15 @@ export function splitWordsIntoCues(words: AlignedWord[], options: CueSplitOption
 function joinCueWords(words: AlignedWord[]): string {
   let joined = ''
   for (const word of words) {
-    const isCjkChar = (word.word.length === 1) && (/[\u4E00-\u9FFF\u3000-\u303F\uFF00-\uFFEF]/.test(word.word))
-    const needsSeparator = (joined !== '') && !isCjkChar && !joined.endsWith(' ')
-    joined += (needsSeparator ? ' ' : '') + word.word
+    joined += cueWordSeparator(joined, word.word) + word.word
   }
   return joined.trim()
+}
+
+// 词间分隔符: 非首个词且非 CJK 单字时补空格
+function cueWordSeparator(existingText: string, wordText: string): string {
+  const isCjkChar = (wordText.length === 1) && (/[\u4E00-\u9FFF\u3000-\u303F\uFF00-\uFFEF]/.test(wordText))
+  return ((existingText !== '') && !isCjkChar && !existingText.endsWith(' ')) ? ' ' : ''
 }
 
 // 秒数格式化为 HH:MM:SS,mmm(SRT)或 MM:SS.mmm(VTT, 超一小时自动带小时)
@@ -115,7 +122,7 @@ export interface SubtitleFormatter {
 }
 
 /**
- * WebVTT 格式
+ * WebVTT 格式(带词级数据时输出内联时间戳标记, 播放器可据此高亮当前词)
  */
 export class VttFormatter implements SubtitleFormatter {
   format(cues: SubtitleCue[]): string {
@@ -123,12 +130,35 @@ export class VttFormatter implements SubtitleFormatter {
     for (const cue of cues) {
       lines.push(
         `${formatTimestamp(cue.startSeconds, '.', false)} --> ${formatTimestamp(cue.endSeconds, '.', false)}`,
-        cue.text,
+        formatVttPayload(cue),
         '',
       )
     }
     return lines.join('\n')
   }
+}
+
+// VTT payload: 带词级数据时输出 <时间戳>词<时间戳>词 内联标记, 否则退回纯文本
+function formatVttPayload(cue: SubtitleCue): string {
+  if ((cue.words === undefined) || (cue.words.length === 0)) {
+    return cue.text
+  }
+
+  let payload = ''
+  let textOnly = ''
+  let previousMark = ''
+  for (const word of cue.words) {
+    const mark = formatTimestamp(word.start, '.', false)
+    // 与前一词落在同一毫秒桶时跳过重复标记, 保持标记单调且精简
+    if (mark !== previousMark) {
+      payload += `<${mark}>`
+      previousMark = mark
+    }
+    const separator = cueWordSeparator(textOnly, word.word)
+    payload += separator + word.word
+    textOnly += separator + word.word
+  }
+  return payload
 }
 
 /**
