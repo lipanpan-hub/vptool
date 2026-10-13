@@ -6,6 +6,7 @@ import {BiliupServerManager} from '../../lib/bup/biliup-server-manager.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 
 export default class BupServer extends BaseCommand {
+  static aliases = ['bup:server','bup:run']
   static description = '后台启动 biliup web 服务并等待就绪(服务目录取配置档案的 biliupRDir 字段)'
 
   static examples = [

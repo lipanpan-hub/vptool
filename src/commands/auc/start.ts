@@ -6,7 +6,7 @@ import {AudioCppServerManager} from '../../lib/auc/audiocpp-server-manager.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 
 export default class AucStart extends BaseCommand {
-  static alias = ['auc:start','auc:run']
+  static aliases = ['auc:start','auc:run']
   static description = '后台启动 audiocpp_server 服务并等待就绪(服务目录取配置档案的 audioCppDir 字段)'
 
   static examples = [

@@ -44,6 +44,8 @@ export interface DownloadVideoOptions {
   useCookies: boolean
   // 随视频一起下载简介(.description 文件, 与视频同名), 不需要时省略
   writeDescription?: boolean
+  // 随视频一起下载封面图(转为 jpg, 与视频同名), 不需要时省略
+  writeThumbnail?: boolean
 }
 
 export async function downloadVideo(
@@ -51,7 +53,7 @@ export async function downloadVideo(
   options: DownloadVideoOptions,
   logger?: {log: (message: string) => void}
 ): Promise<void> {
-  const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies, writeDescription} = options
+  const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies, writeDescription, writeThumbnail} = options
 
   logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
   logger?.log(`保存位置: ${outputDir}\n`)
@@ -65,6 +67,10 @@ export async function downloadVideo(
 
   if (writeDescription) {
     logger?.log(`📄 将附带下载视频简介\n`)
+  }
+
+  if (writeThumbnail) {
+    logger?.log(`🖼️ 将附带下载视频封面\n`)
   }
 
   const ytdlp = new YtDlp()
@@ -123,6 +129,11 @@ export async function downloadVideo(
     // 视频简介与视频同目录同名落盘(如 "标题.description")
     if (writeDescription) {
       builder.addOption('writeDescription', true)
+    }
+
+    // 封面与视频同目录同名落盘, YouTube 原始为 webp, 借助 ffmpeg 统一转为 jpg 提高兼容性
+    if (writeThumbnail) {
+      builder.writeThumbnail().addOption('convertThumbnails', 'jpg')
     }
 
     if (useCookies) {

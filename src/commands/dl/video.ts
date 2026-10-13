@@ -28,7 +28,7 @@ export default class DlVideo extends Command {
     best: Flags.boolean({
       char: 'b',
       default: false,
-      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介）',
+      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）',
     }),
     'format-id': Flags.string({
       char: 'f',
@@ -92,6 +92,9 @@ export default class DlVideo extends Command {
       // --best 且为 YouTube 时自动附带下载视频简介
       const writeDescription = best && videoInfo.extractor_key === 'Youtube'
 
+      // --best 且为 YouTube 时自动附带下载视频封面
+      const writeThumbnail = best && videoInfo.extractor_key === 'Youtube'
+
       // 下载视频
       await downloadVideo(videoUrl, {
         autoSubtitleLang,
@@ -100,6 +103,7 @@ export default class DlVideo extends Command {
         outputDir,
         useCookies,
         writeDescription,
+        writeThumbnail,
       }, this)
       
       this.log('\n✅ 下载完成!')
