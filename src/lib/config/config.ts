@@ -104,6 +104,22 @@ export class ToolConfigManager extends ConfigManager<Profile> {
   }
 
   /**
+   * 读取当前档案的 biliupR 目录路径, 未配置返回 `null`。
+   */
+  getBiliupRDir(): null | string {
+    return this.getCurrentProfile()?.biliupRDir || null
+  }
+
+  /**
+   * 写入 biliupR 目录路径到当前档案; 若无当前档案则创建默认档案。
+   */
+  setBiliupRDir(biliupRDir: string): void {
+    if (!this.updateCurrentProfile({biliupRDir})) {
+      this.upsertProfile(this.buildDefaultProfile({biliupRDir}), true)
+    }
+  }
+
+  /**
    * 读取当前档案的下载前缀列表, 未配置返回空数组。
    */
   getDlPrefix(): string[] {
