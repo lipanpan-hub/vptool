@@ -1,5 +1,5 @@
 import {Args, Flags} from '@oclif/core'
-import {existsSync, writeFileSync} from 'node:fs'
+import {existsSync, mkdirSync, writeFileSync} from 'node:fs'
 import {dirname, extname, join, basename} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
@@ -24,6 +24,7 @@ export default class AucSub extends BaseCommand {
     '<%= config.bin %> <%= command.id %> video.mp4',
     '<%= config.bin %> <%= command.id %> video.mp4 --format srt',
     '<%= config.bin %> <%= command.id %> video.mp4 --auto-load',
+    '<%= config.bin %> <%= command.id %> video.mp4 --vttflow',
     '<%= config.bin %> <%= command.id %>',
   ]
 
@@ -41,6 +42,8 @@ export default class AucSub extends BaseCommand {
     out: Flags.string({description: '字幕输出路径(缺省与源文件同名)'}),
     // 开启时把整段转写文本写成与字幕同名的 .txt 纯文本文档(单段, 不分行)
     txt: Flags.boolean({description: '同时生成同名 txt 纯文本文档(整段)', default: false}),
+    // 开启时输出重定向到当前目录 .vttflow 子目录(不存在则自动创建), 文件名追加 .step1-raw 后缀, vtt 与 txt 同时生成
+    vttflow: Flags.boolean({description: '输出到当前目录 .vttflow 目录(自动创建), 文件名为 默认名.step1-raw.vtt/.txt', default: true}),
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
     // 开启时自动就绪所需模型: 先卸载其他已加载模型腾出显存, ASR 与对齐模型未装载则自动装载
     'auto-load': Flags.boolean({description: '自动装载所需模型(卸载其他已加载模型, 再装载 ASR 与对齐模型)', default: true}),
@@ -109,12 +112,25 @@ export default class AucSub extends BaseCommand {
       const singleCue = buildSingleCue(alignedWords)
       const subtitleContent = createSubtitleFormatter(flags.format).format([singleCue])
 
-      const outputPath = flags.out ?? buildDefaultSubtitlePath(sourceFile, flags.format)
+      // #region 解析输出路径: --vttflow 重定向到当前目录 .vttflow 子目录且 txt 必然伴随生成
+      let outputPath: string
+      let textPath: string | undefined
+      if (flags.vttflow) {
+        const flowDir = join(process.cwd(), '.vttflow')
+        mkdirSync(flowDir, {recursive: true})
+        const flowStem = `${basename(sourceFile, extname(sourceFile))}.step1-raw`
+        outputPath = join(flowDir, `${flowStem}.${flags.format}`)
+        textPath = join(flowDir, `${flowStem}.txt`)
+      } else {
+        outputPath = flags.out ?? buildDefaultSubtitlePath(sourceFile, flags.format)
+        if (flags.txt) textPath = buildSidecarTextPath(outputPath)
+      }
+      // #endregion
+
       writeFileSync(outputPath, subtitleContent, 'utf8')
       this.log(`已生成字幕(整段单条): ${outputPath}`)
 
-      if (flags.txt) {
-        const textPath = buildSidecarTextPath(outputPath)
+      if (textPath !== undefined) {
         writeFileSync(textPath, `${singleCue.text}\n`, 'utf8')
         this.log(`已生成纯文本文档(整段): ${textPath}`)
       }
