@@ -2,21 +2,28 @@ import {Flags} from '@oclif/core'
 import {resolve} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
+import {AudioCppClient} from '../../lib/auc/audiocpp-client.js'
 import {AudioCppServerManager} from '../../lib/auc/audiocpp-server-manager.js'
+import {selectModelByDirectory, type ModelCandidate} from '../../lib/auc/model-locator.js'
+import {replaceLoadedModels, selectModelInteractively} from '../../lib/auc/model-switcher.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 
 export default class AucStart extends BaseCommand {
   static aliases = ['auc:start','auc:run']
-  static description = '后台启动 audiocpp_server 服务并等待就绪(服务目录取配置档案的 audioCppDir 字段)'
+  static description = '后台启动 audiocpp_server 服务并等待就绪(服务目录取配置档案的 audioCppDir 字段); 就绪后装载指定模型(已加载的其他模型先卸载, 目标已装载则跳过), 未指定 --model 时交互式选择'
 
   static examples = [
     '<%= config.bin %> <%= command.id %>',
     '<%= config.bin %> <%= command.id %> --port 8081 --backend cpu',
+    '<%= config.bin %> <%= command.id %> --model Qwen3-ASR-1.7B-GGUF',
   ]
 
   static flags = {
     port: Flags.integer({description: '服务监听端口', default: 8080}),
     backend: Flags.string({description: '计算后端', default: 'cuda'}),
+    model: Flags.string({description: '就绪后装载的模型包目录(models 下目录名或绝对路径), 已加载的其他模型会先卸载; 缺省进入交互式选择'}),
+    // 同一目录含多个包(如 AuK)时用于指定
+    package: Flags.string({description: '包 id(仅 --model 目录内含多个包时必填)'}),
   }
 
   public async run(): Promise<void> {
@@ -28,7 +35,8 @@ export default class AucStart extends BaseCommand {
     }
 
     // 统一转绝对路径, 避免相对路径在不同工作目录下语义漂移
-    const manager = new AudioCppServerManager({audioCppDir: resolve(audioCppDir), port: flags.port, backend: flags.backend})
+    const resolvedAudioCppDir = resolve(audioCppDir)
+    const manager = new AudioCppServerManager({audioCppDir: resolvedAudioCppDir, port: flags.port, backend: flags.backend})
 
     // #region 前置检查
     try {
@@ -36,18 +44,33 @@ export default class AucStart extends BaseCommand {
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
     }
+
+    // --model 传了就先定位目标模型, 目录无效时在启动服务前快速失败
+    let directTargetModel: ModelCandidate | null = null
+    if (flags.model !== undefined) {
+      try {
+        directTargetModel = selectModelByDirectory(resolvedAudioCppDir, flags.model, flags.package)
+      } catch (error) {
+        this.error(error instanceof Error ? error.message : String(error))
+      }
+    }
     // #endregion
 
     // #region 启动并输出结果
     const startResult = await manager.start()
     if (startResult.kind === 'already-running') {
       this.log(`服务已在运行, 复用现有进程: ${manager.baseUrl}`)
-      return
+    } else {
+      this.log(`服务就绪: backend=${startResult.health.backend}`)
+      this.log(`服务地址: ${manager.baseUrl}`)
+      this.log(`日志文件: ${manager.logFilePath}`)
     }
+    // #endregion
 
-    this.log(`服务就绪: backend=${startResult.health.backend}`)
-    this.log(`服务地址: ${manager.baseUrl}`)
-    this.log(`日志文件: ${manager.logFilePath}`)
+    // #region 就绪后换装到目标模型: 传 --model 直通, 未传交互式选择(卸载其他已加载模型, 目标已装载则跳过)
+    const targetModel = directTargetModel ?? await selectModelInteractively(resolvedAudioCppDir)
+    const client = new AudioCppClient({baseUrl: manager.baseUrl})
+    await replaceLoadedModels({audioCppDir: resolvedAudioCppDir, client, log: (message) => this.log(message), target: targetModel})
     // #endregion
   }
 }

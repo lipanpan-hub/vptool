@@ -139,6 +139,23 @@ export function locateAlignerPackage(audioCppDir: string): LocatedPackage | null
 }
 
 /**
+ * 按目录参数直通定位模型候选: 目录名相对 models 或绝对路径均可,
+ * 多包目录需 --package 指定包 id。
+ */
+export function selectModelByDirectory(audioCppDir: string, dirArgument: string, packageIdFlag?: string): ModelCandidate {
+  const packageDir = resolvePackageDir(audioCppDir, dirArgument)
+  const targetPackage = locatePackage(audioCppDir, packageDir, packageIdFlag)
+  return {
+    directoryName: basename(packageDir),
+    packageId: targetPackage.packageId,
+    family: targetPackage.spec.family,
+    task: targetPackage.spec.tasks[0],
+    weightFileName: basename(targetPackage.weightsPath),
+    weightsPath: targetPackage.weightsPath,
+  }
+}
+
+/**
  * 解析 --set key=value 形式的 session_options。
  */
 export function parseSessionOptions(pairs: string[]): Record<string, string> {
