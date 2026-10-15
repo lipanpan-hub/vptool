@@ -1,6 +1,13 @@
+import {dirname} from 'node:path'
+
 import {YtDlp} from 'ytdlp-nodejs'
 
 import {extractAudioToMp3} from './extract-audio.js'
+
+// 从下载结果中定位成品视频文件路径(分流/合并完成后 yt-dlp 回报的最终文件)
+function resolveVideoPath(result: any): string | undefined {
+  return result.info?.[0]?.filepath || result.filePaths?.[0]
+}
 
 // 组装单行进度文案: 下载进度 | 大小 | 速度 | 预计剩余
 function buildProgressLine(progress: {eta_str?: string; percentage_str?: string; speed_str?: string; total_bytes_str?: string}): string {
@@ -23,7 +30,7 @@ function buildProgressLine(progress: {eta_str?: string; percentage_str?: string;
 
 // 抽取音频: 对合并后的成品视频单独抽取一份同名 mp3, 避免 bestvideo/bestaudio 分流中间文件被保留
 async function extractAudioFromResult(result: any, logger?: {log: (message: string) => void}): Promise<void> {
-  const videoPath = result.info?.[0]?.filepath || result.filePaths?.[0]
+  const videoPath = resolveVideoPath(result)
   if (!videoPath) {
     logger?.log('\n⚠ 未能定位下载的视频文件, 跳过音频抽取')
     return
@@ -52,7 +59,7 @@ export async function downloadVideo(
   url: string,
   options: DownloadVideoOptions,
   logger?: {log: (message: string) => void}
-): Promise<void> {
+): Promise<string | undefined> {
   const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies, writeDescription, writeThumbnail} = options
 
   logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
@@ -150,6 +157,10 @@ export async function downloadVideo(
     if (extractAudio) {
       await extractAudioFromResult(result, logger)
     }
+
+    // 返回视频所在目录(即 <标题>.<扩展名> 同名文件夹, 字幕/mp3/简介等附带产物都在其中)
+    const videoPath = resolveVideoPath(result)
+    return videoPath ? dirname(videoPath) : undefined
   } catch (error) {
     if (lastProgressLength > 0) {
       process.stdout.write('\n')

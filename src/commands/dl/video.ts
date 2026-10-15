@@ -7,6 +7,7 @@ import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
 import {selectPrefix} from '../../lib/dl/select-prefix.js'
 import {resolveAutoEnglishSubtitleLang} from '../../lib/dl/select-subtitle.js'
+import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
 export default class DlVideo extends Command {
@@ -95,8 +96,8 @@ export default class DlVideo extends Command {
       // --best 且为 YouTube 时自动附带下载视频封面
       const writeThumbnail = best && videoInfo.extractor_key === 'Youtube'
 
-      // 下载视频
-      await downloadVideo(videoUrl, {
+      // 下载视频, 成功后返回视频所在目录(字幕/mp3/简介等附带产物的同名文件夹)
+      const videoDir = await downloadVideo(videoUrl, {
         autoSubtitleLang,
         extractAudio: keepAudio,
         formatId: selectedFormatId,
@@ -105,8 +106,14 @@ export default class DlVideo extends Command {
         writeDescription,
         writeThumbnail,
       }, this)
-      
+
       this.log('\n✅ 下载完成!')
+
+      // 沿用 vp dl cd 的机制: 在视频所在目录直接 spawn 交互式 shell, exit 退出后返回
+      if (videoDir) {
+        this.log(`\n进入目录: ${videoDir} (输入 exit 退出并返回)`)
+        await spawnShellAt(videoDir)
+      }
     } catch (error) {
       this.error(formatVideoError(error, useCookies, 'download'))
     }
