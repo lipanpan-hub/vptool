@@ -73,15 +73,19 @@ export function buildForceStyle(style: SubtitleStyle): string {
   return fields.join(',')
 }
 
-// ffmpeg 滤镜图会再次解析反斜杠与冒号, 因此统一转正斜杠并转义盘符冒号(Windows)
+// ffmpeg 滤镜参数要经两层解析(filtergraph 取参与选项取值), 每层都把 \ 当转义符、' 当引用符
+// 特殊字符统一写成 \\\x: filtergraph 层还原为 \x, 选项层再还原为 x, 任何一层都不会误当分隔符或引用
+// 因此不能再用单引号包裹路径 -- 引号内的单引号无法表达, 含 ' 的文件名必然解析错乱
 function escapeFilterPath(filePath: string): string {
-  return filePath.replaceAll('\\', '/').replaceAll(':', String.raw`\:`)
+  return filePath
+    .replaceAll('\\', '/')
+    .replaceAll(/([':[\],;=])/g, String.raw`\\\$1`)
 }
 
 // 组装 subtitles 滤镜串
-// 路径与 force_style 都含冒号/逗号, 必须各自用单引号包裹, 否则会被滤镜参数解析器当作分隔符
+// filename 经 escapeFilterPath 全量转义; force_style 内容可控(无引号), 保持单引号包裹以保护其中的逗号与等号
 export function buildSubtitleFilter(subtitlePath: string, style: SubtitleStyle = {}): string {
-  const args = [`filename='${escapeFilterPath(subtitlePath)}'`]
+  const args = [`filename=${escapeFilterPath(subtitlePath)}`]
   const forceStyle = buildForceStyle(style)
   if (forceStyle) args.push(`force_style='${forceStyle}'`)
 
