@@ -170,6 +170,27 @@ export function parseSessionOptions(pairs: string[]): Record<string, string> {
   return sessionOptions
 }
 
+// IndexTTS2.5 的命名标记: "2" 与 "5" 之间带 . _ - 分隔符
+// (实际命名: 目录 IndexTTS2.5-GGUF / 包 id index_tts2_5_q8_0 / 权重 index-tts2_5-q8_0.gguf; 2.0 变体不含该模式)
+const TTS25_MARKER = /2[._-]5/
+
+/**
+ * 定位 IndexTTS2.5 配音模型候选(供 dub 命令自动换装):
+ * family 必须是 index_tts2, 再按包 id/目录名/权重名中的 2.5 标记区分 2 与 2.5 变体。
+ */
+export function findIndexTts25Candidate(audioCppDir: string): ModelCandidate {
+  const ttsCandidates = listModelCandidates(audioCppDir).filter((candidate) => candidate.family === 'index_tts2')
+  const target = ttsCandidates.find((candidate) => {
+    const identity = `${candidate.packageId} ${candidate.directoryName} ${candidate.weightFileName}`.toLowerCase()
+    return TTS25_MARKER.test(identity)
+  })
+  if (target === undefined) {
+    const availableNames = ttsCandidates.map((candidate) => `${candidate.directoryName}/${candidate.weightFileName}`).join(', ')
+    throw new Error(`models 目录下没有找到 IndexTTS2.5 模型包, 现有 TTS 候选: ${availableNames || '(无)'}`)
+  }
+  return target
+}
+
 /**
  * 扫描 models 目录, 枚举全部可装载的模型候选:
  * 每个候选 = (包目录, 包, 权重) 三元组, family/task 由 spec 匹配得出。

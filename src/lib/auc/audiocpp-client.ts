@@ -182,6 +182,8 @@ export class AudioCppClient {
     // 音频格式, 默认 wav
     responseFormat: string
     text: string
+    // 服务内置音色名(可选, 未指定参考音色时使用)
+    voiceName?: string
     // 参考音色 wav 文件路径(可选)
     voiceRefPath?: string
   }): Promise<Buffer> {
@@ -197,6 +199,8 @@ export class AudioCppClient {
       // 服务端字段为 snake_case, 无法改名
       // eslint-disable-next-line camelcase
       body.voice_ref = request.voiceRefPath
+    } else if (request.voiceName !== undefined) {
+      body.voice = request.voiceName
     }
 
     const response = await this.doFetch('POST', '/v1/audio/speech', JSON.stringify(body), {
