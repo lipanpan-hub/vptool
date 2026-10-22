@@ -1,5 +1,5 @@
 import {execFileSync, spawn} from 'node:child_process'
-import {existsSync, mkdirSync, openSync} from 'node:fs'
+import {existsSync, mkdirSync, openSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 
 /**
@@ -14,9 +14,14 @@ interface HealthResponse {
 /**
  * 正在监听服务端口的进程信息
  */
-interface ListeningProcess {
+export interface ListeningProcess {
   processId: number
   name: string
+  // 可执行文件路径, 权限不足时可能缺失
+  path?: string
+  commandLine?: string
+  // 连接状态(Listen / Bound / Established 等)
+  state?: string
 }
 
 /**
@@ -26,6 +31,9 @@ interface PortProbeResult {
   found: boolean
   pid?: number
   name?: string
+  path?: null | string
+  commandLine?: null | string
+  state?: string
 }
 
 /**
@@ -84,6 +92,8 @@ export class AudioCppServerManager {
   private readonly audioCppDir: string
   private readonly port: number
   private readonly backend: string | undefined
+  // 子进程提前退出时的退出码, 未退出为 undefined
+  private serverExitCode: number | undefined
 
   constructor(options: ServerManagerOptions) {
     this.audioCppDir = options.audioCppDir
@@ -158,7 +168,22 @@ export class AudioCppServerManager {
       windowsHide: true,
       stdio: ['ignore', stdoutFd, stderrFd],
     })
+    // 记录子进程提前退出的退出码, 供就绪轮询时快速失败
+    this.serverExitCode = undefined
+    child.on('exit', (exitCode) => {
+      this.serverExitCode = exitCode ?? -1
+    })
     child.unref()
+  }
+
+  // 读取 stderr 日志末尾若干行, 用于启动失败时直接展示原因
+  private readErrorLogTail(lineCount = 5): string {
+    try {
+      const errorLines = readFileSync(this.errorLogFilePath, 'utf8').split('\n').filter((line) => line.trim() !== '')
+      return errorLines.slice(-lineCount).join('\n')
+    } catch {
+      return ''
+    }
   }
 
   // #endregion
@@ -185,12 +210,29 @@ export class AudioCppServerManager {
     return {kind: 'stopped', processId: listeningProcess.processId, processName: listeningProcess.name}
   }
 
-  // 用 Get-NetTCPConnection 找到监听服务端口的属主进程, 省去解析 netstat 文本
+  // 找监听服务端口的属主进程(仅 Listen 状态), stop 用
   private findListeningProcess(): ListeningProcess | null {
+    return this.probePortProcess(true)
+  }
+
+  // 找以任意状态占用该端口的进程(含仅 bind 未 listen 的情况), 供启动前冲突检测; 排除 pid 0(TIME_WAIT 残留)
+  findPortOccupier(): ListeningProcess | null {
+    return this.probePortProcess(false)
+  }
+
+  // 用 Get-NetTCPConnection 找到端口的属主进程, 省去解析 netstat 文本
+  private probePortProcess(isListenOnly: boolean): ListeningProcess | null {
+    const stateFilter = isListenOnly ? '-State Listen ' : ''
     const probeScript = [
-      `$conn = Get-NetTCPConnection -LocalPort ${this.port} -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1`,
+      `$conn = Get-NetTCPConnection -LocalPort ${this.port} ${stateFilter}-ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -ne 0 } | Select-Object -First 1`,
       '$result = [ordered]@{ found = $false }',
-      'if ($null -ne $conn) { $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue; $result = [ordered]@{ found = $true; pid = $conn.OwningProcess; name = $proc.ProcessName } }',
+      [
+        'if ($null -ne $conn) {',
+        '$proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue;',
+        '$cim = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $conn.OwningProcess) -ErrorAction SilentlyContinue;',
+        '$result = [ordered]@{ found = $true; pid = $conn.OwningProcess; name = $proc.ProcessName; path = $proc.Path; commandLine = $cim.CommandLine; state = [string]$conn.State }',
+        '}',
+      ].join(' '),
       '$result | ConvertTo-Json -Compress',
     ].join('; ')
 
@@ -210,7 +252,23 @@ export class AudioCppServerManager {
     if (!probeResult.found) {
       return null
     }
-    return {processId: Number(probeResult.pid), name: String(probeResult.name)}
+    return {
+      processId: Number(probeResult.pid),
+      name: String(probeResult.name),
+      path: probeResult.path ?? undefined,
+      commandLine: probeResult.commandLine ?? undefined,
+      state: probeResult.state,
+    }
+  }
+
+  /**
+   * 强制终止占用端口的进程并等待端口释放, 超时抛错(启动前冲突处理用)。
+   */
+  async killPortOccupier(occupier: ListeningProcess): Promise<void> {
+    this.terminateProcess(occupier.processId)
+    if (!(await this.waitUntilStopped(false))) {
+      throw new Error(`端口 ${this.port} 在 ${STOP_TIMEOUT_MS / 1000} 秒内未释放, 可手动执行: taskkill /F /PID ${occupier.processId}`)
+    }
   }
 
   private terminateProcess(processId: number): void {
@@ -221,10 +279,11 @@ export class AudioCppServerManager {
     }
   }
 
-  private async waitUntilStopped(): Promise<boolean> {
+  // isListenOnly 决定"端口已释放"的判定口径: stop 只看 Listen, 冲突处理看任意状态
+  private async waitUntilStopped(isListenOnly = true): Promise<boolean> {
     const stopDeadline = Date.now() + STOP_TIMEOUT_MS
     while (Date.now() < stopDeadline) {
-      if (this.findListeningProcess() === null) {
+      if (this.probePortProcess(isListenOnly) === null) {
         return true
       }
       // eslint-disable-next-line no-await-in-loop -- 轮询场景必须串行等待
@@ -261,6 +320,9 @@ export class AudioCppServerManager {
       const health = await this.fetchHealth()
       if (health !== null) {
         return health
+      }
+      if (this.serverExitCode !== undefined) {
+        throw new Error(`服务进程已提前退出(退出码 ${this.serverExitCode}), stderr 末尾:\n${this.readErrorLogTail()}\n完整日志: ${this.errorLogFilePath}`)
       }
       // eslint-disable-next-line no-await-in-loop -- 轮询场景必须串行等待
       await delay(POLL_INTERVAL_MS)

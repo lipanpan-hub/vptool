@@ -1,5 +1,6 @@
 import {Flags} from '@oclif/core'
 import {resolve} from 'node:path'
+import prompts from 'prompts'
 
 import {BaseCommand} from '../../lib/base-command.js'
 import {AudioCppClient} from '../../lib/auc/audiocpp-client.js'
@@ -56,6 +57,12 @@ export default class AucStart extends BaseCommand {
     }
     // #endregion
 
+    // #region 端口冲突处理: 服务未就绪但端口被其他进程占用时, 展示占用信息并询问是否杀掉
+    if ((await manager.fetchHealth()) === null) {
+      await this.resolvePortConflict(manager, flags.port)
+    }
+    // #endregion
+
     // #region 启动并输出结果
     const startResult = await manager.start()
     if (startResult.kind === 'already-running') {
@@ -72,5 +79,37 @@ export default class AucStart extends BaseCommand {
     const client = new AudioCppClient({baseUrl: manager.baseUrl})
     await replaceLoadedModels({audioCppDir: resolvedAudioCppDir, client, log: (message) => this.log(message), target: targetModel})
     // #endregion
+  }
+
+  // 端口被占用时输出占用进程信息, 用户确认后杀掉; 拒绝或无法交互则终止启动
+  private async resolvePortConflict(manager: AudioCppServerManager, port: number): Promise<void> {
+    const occupier = manager.findPortOccupier()
+    if (occupier === null) {
+      return
+    }
+
+    this.log(`端口 ${port} 已被其他进程占用:`)
+    this.log(`  进程名: ${occupier.name} (pid=${occupier.processId})`)
+    this.log(`  连接状态: ${occupier.state ?? '未知'}`)
+    this.log(`  程序路径: ${occupier.path ?? '未知(权限不足)'}`)
+    this.log(`  命令行: ${occupier.commandLine ?? '未知'}`)
+
+    // Agent 终端不是 TTY, 无法应答确认, 直接报错并提示换端口
+    if (!process.stdin.isTTY) {
+      this.error(`非交互环境无法确认是否杀进程, 请换端口(--port)或手动结束 pid=${occupier.processId}`)
+    }
+
+    const {isConfirmed} = await prompts({
+      type: 'confirm',
+      name: 'isConfirmed',
+      message: `是否杀死 ${occupier.name} (pid=${occupier.processId}) 并重新启动服务?`,
+      initial: false,
+    })
+    if (isConfirmed !== true) {
+      this.error('已取消启动, 可用 --port 换一个端口')
+    }
+
+    await manager.killPortOccupier(occupier)
+    this.log(`已杀死 ${occupier.name} (pid=${occupier.processId}), 端口 ${port} 已释放`)
   }
 }
