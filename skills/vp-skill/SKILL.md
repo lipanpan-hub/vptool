@@ -21,14 +21,16 @@ description: "调用 vp（@lppx/vptool）命令行完成视频下载、抖音视
 成功：退出码 0。
 
 ```json
-{"ok": true, "command": "dl:check", "data": {...}}
+{"ok": true, "command": "dl:check", "durationMs": 1234, "data": {...}}
 ```
 
 失败：退出码非 0，错误也写在 stdout。
 
 ```json
-{"ok": false, "command": "bup:status", "error": {"message": "...", "exitCode": 1}}
+{"ok": false, "command": "bup:status", "durationMs": 56, "error": {"message": "...", "exitCode": 1}}
 ```
+
+- `durationMs` 是命令本身的执行耗时（毫秒），不含 `vp` 进程启动时间，每次运行都不同，做断言或快照对比时要忽略。
 
 - `data` 的结构因命令而异，字段是产物路径、解析结果、列表等（例如 `vtt zip` 返回 `{inputPath, outputPath}`，`fft probe` 返回 ffprobe 的 `{format, streams}`，`dl vmeta` 返回标题、时长、格式列表）。
 - `--json` 下命令不会弹交互。缺少必要参数时直接返回 `ok:false`，message 里写明要补哪个参数，按提示补齐后重跑即可。这样就不用担心进程卡在等待输入。

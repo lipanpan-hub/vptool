@@ -11,12 +11,15 @@ export type CommandResult = object
 export interface JsonSuccessEnvelope {
   command: string | undefined
   data: CommandResult
+  // 命令执行耗时(毫秒), 从 init 完成到生成信封, 不含 oclif 启动和 logger 关闭
+  durationMs: number
   ok: true
 }
 
 // --json 失败信封(stdout 输出, 退出码非 0)
 export interface JsonErrorEnvelope {
   command: string | undefined
+  durationMs: number
   error: {code: string | undefined; exitCode: number | string | undefined; message: string}
   ok: false
 }
@@ -27,6 +30,9 @@ export abstract class BaseCommand extends Command {
 
   // 子类直接用 this.logger 记日志, scope 自动带上命令 id
   protected logger!: Logger
+
+  // init 完成时刻(performance.now 毫秒), 用于计算命令执行耗时
+  private startedAtMs = 0
 
   protected async catch(error: Error & {exitCode?: number}): Promise<unknown> {
     // this.logger?.error({err: error}, `命令执行失败: ${error.message}`)
@@ -39,6 +45,8 @@ export abstract class BaseCommand extends Command {
   }
 
   protected async finally(error: Error | undefined): Promise<unknown> {
+    // 命令执行耗时写入文件日志, 不区分是否 --json
+    // this.logger?.info({durationMs: this.getDurationMs(), isFailed: error !== undefined}, '命令结束')
     // 退出前必须等 transport worker 落盘, 否则短命进程会丢日志
     await LoggerManager.instance.shutdown()
     return super.finally(error)
@@ -63,6 +71,7 @@ export abstract class BaseCommand extends Command {
     const error = err as {code?: string; exitCode?: number; message?: string}
     return {
       command: this.id,
+      durationMs: this.getDurationMs(),
       error: {
         code: error.code,
         // oclif 的 catch 在调用本方法前已设置 process.exitCode
@@ -74,7 +83,7 @@ export abstract class BaseCommand extends Command {
   }
 
   protected toSuccessJson(result: unknown): JsonSuccessEnvelope {
-    return {command: this.id, data: result as CommandResult, ok: true}
+    return {command: this.id, data: result as CommandResult, durationMs: this.getDurationMs(), ok: true}
   }
 
   async init(): Promise<void> {
@@ -83,7 +92,13 @@ export abstract class BaseCommand extends Command {
     // JSON 模式下关掉控制台 transport, 否则 pino-pretty 的日志会混进 stdout
     LoggerManager.instance.init(this.config.configDir, {isConsoleMuted: this.jsonEnabled()})
     this.logger = LoggerManager.instance.createChildLogger(this.id ?? this.constructor.name)
-    this.logger.debug({argv: this.argv}, '命令开始执行')
+    // this.logger.debug({argv: this.argv}, '命令开始执行')
+    this.startedAtMs = performance.now()
+  }
+
+  // 取整到毫秒, 避免 JSON 里出现一长串小数
+  private getDurationMs(): number {
+    return Math.round(performance.now() - this.startedAtMs)
   }
 
   abstract run(): Promise<CommandResult>
