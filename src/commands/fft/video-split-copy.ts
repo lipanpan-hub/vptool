@@ -2,14 +2,15 @@
 // 扫描当前目录让用户交互式选择需要被操作的视频
 // 交互式询问开始时间和结束时间, 用户选定时间之后开始执行分割操作
 
-import {Args, Command} from '@oclif/core'
+import {Args} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {parseTimeToSeconds, videoSplitCopy} from '../../lib/fft/video-split-copy.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
-export default class FftVideoSplitCopy extends Command {
+export default class FftVideoSplitCopy extends BaseCommand {
   static aliases = ['fft:vsc']
   static args = {
     video: Args.string({description: '源 mp4 文件(省略则扫描当前目录交互选择)'}),
@@ -20,8 +21,11 @@ export default class FftVideoSplitCopy extends Command {
     '<%= config.bin %> <%= command.id %>',
   ]
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{outputPath: null | string; videoPath: string}> {
     const {args} = await this.parse(FftVideoSplitCopy)
+
+    // 起止时间只能交互输入, 没有对应参数可规避
+    this.rejectInteractiveOnlyInJsonMode('起止时间只能交互输入')
 
     // #region 选择源视频
     const videoPath = args.video ?? (await selectFile(['.mp4','.webm'], '请选择要切割的文件:'))
@@ -37,7 +41,7 @@ export default class FftVideoSplitCopy extends Command {
     })
     if (!start) {
       this.log('已取消')
-      return
+      return {outputPath: null, videoPath}
     }
 
     const startSec = parseTimeToSeconds(start)
@@ -52,14 +56,16 @@ export default class FftVideoSplitCopy extends Command {
     })
     if (!end) {
       this.log('已取消')
-      return
+      return {outputPath: null, videoPath}
     }
     // #endregion
 
     // #region 执行切割
     this.log(`正在切割 ${videoPath} (${start} → ${end})...`)
-    await videoSplitCopy(videoPath, start, end, this)
+    const outputPath = await videoSplitCopy(videoPath, start, end, this)
     // #endregion
+
+    return {outputPath, videoPath}
   }
 }
 

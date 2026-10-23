@@ -1,8 +1,8 @@
 import * as inquirer from '@inquirer/prompts'
 import {Flags} from '@oclif/core'
-import { BaseCommand } from '../../lib/base-command.js'
 
-import {ToolConfigManager, editConfigTui, ExternalEditor} from '../../lib/config/index.js'
+import {BaseCommand} from '../../lib/base-command.js'
+import {editConfigTui, ExternalEditor, ToolConfigManager} from '../../lib/config/index.js'
 
 export default class ConfigEdit extends BaseCommand {
   static aliases = ["cf:edit"]
@@ -14,8 +14,12 @@ export default class ConfigEdit extends BaseCommand {
     editor: Flags.boolean({char: 'e', description: '交互式选择系统中可用的外部编辑器进行编辑'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{configPath: string}> {
     const {flags} = await this.parse(ConfigEdit)
+
+    // TUI / 外部编辑器都是纯交互, 没有对应参数可规避
+    this.rejectInteractiveOnlyInJsonMode('配置只能交互编辑(查看配置请用 config show)')
+
     const configManager = ToolConfigManager.fromConfigDir(this.config.configDir)
 
     // 确保配置文件存在, 不存在则写入默认空配置, 避免编辑器读取时报错
@@ -28,7 +32,7 @@ export default class ConfigEdit extends BaseCommand {
     // 未指定 --editor 时使用内置 TUI 编辑器
     if (!flags.editor) {
       await editConfigTui(configPath)
-      return
+      return {configPath}
     }
 
     // #region 外部编辑器: 检测可用项 -> 交互选择 -> 启动编辑
@@ -47,5 +51,7 @@ export default class ConfigEdit extends BaseCommand {
     await externalEditor.open(selected, configPath)
     this.log(`已使用 ${selected.name} 编辑完成: ${configPath}`)
     // #endregion
+
+    return {configPath}
   }
 }

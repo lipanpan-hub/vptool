@@ -1,11 +1,12 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {existsSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs'
 import {basename, dirname, extname, join} from 'node:path'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {restampSegments} from '../../lib/vtt/restamp.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
-export default class VttRestamp extends Command {
+export default class VttRestamp extends BaseCommand {
   static args = {
     vtt: Args.string({description: '含逐词时间戳的源 VTT 文件(省略则扫描当前目录交互选择)'}),
     text: Args.string({description: '重新分段后的纯文本文件(省略则扫描当前目录交互选择)'}),
@@ -23,10 +24,12 @@ export default class VttRestamp extends Command {
     output: Flags.string({char: 'o', description: '输出文件路径(默认在文本文件旁生成 *.restamp.vtt)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{isTextDeleted: boolean; outputPath: string; textPath: string; vttPath: string}> {
     const {args, flags} = await this.parse(VttRestamp)
 
+    if (!args.vtt) this.rejectInteractionInJsonMode('<vtt> 参数')
     const vttPath = args.vtt ?? (await selectFile(['.vtt'], '请选择源 VTT 文件:'))
+    if (!args.text) this.rejectInteractionInJsonMode('<text> 参数')
     const textPath = args.text ?? (await selectFile(['.txt'], '请选择重新分段的文本文件:'))
 
     if (!existsSync(vttPath)) this.error(`文件不存在: ${vttPath}`)
@@ -41,5 +44,7 @@ export default class VttRestamp extends Command {
     if (!flags.keep) unlinkSync(textPath)
 
     this.log(`已生成: ${outputPath}`)
+
+    return {isTextDeleted: !flags.keep, outputPath, textPath, vttPath}
   }
 }

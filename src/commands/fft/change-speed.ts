@@ -1,16 +1,17 @@
 // 这个命令的作用是借助 ffmpeg atempo 对音频调速(变速不变调)
 // 扫描当前目录让用户交互式选择音频, 再输入速度倍率后执行
 
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {buildSpeedChangedPath, changeAudioSpeed, formatSpeed, isValidSpeed} from '../../lib/fft/change-speed.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
 const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma']
 
-export default class FftChangeSpeed extends Command {
+export default class FftChangeSpeed extends BaseCommand {
   static aliases = ['fft:cs']
 
   static args = {
@@ -33,10 +34,11 @@ export default class FftChangeSpeed extends Command {
     output: Flags.string({char: 'o', description: '输出文件路径(默认在源文件旁生成带倍率后缀的新文件)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{audioPath: string; outputPath: null | string; speed: null | number}> {
     const {args, flags} = await this.parse(FftChangeSpeed)
 
     // #region 选择源音频
+    if (!args.audio) this.rejectInteractionInJsonMode('<audio> 参数')
     const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要调速的音频文件:'))
     if (!existsSync(audioPath)) this.error(`文件不存在: ${audioPath}`)
     // #endregion
@@ -45,7 +47,7 @@ export default class FftChangeSpeed extends Command {
     const speed = await this.resolveSpeed(args.speed)
     if (speed === null) {
       this.log('已取消')
-      return
+      return {audioPath, outputPath: null, speed: null}
     }
     // #endregion
 
@@ -53,6 +55,7 @@ export default class FftChangeSpeed extends Command {
     const outputPath = flags.output ?? buildSpeedChangedPath(audioPath, speed)
     // 未指定 --force 时先询问, 指定后直接覆盖
     if (existsSync(outputPath) && !flags.force) {
+      this.rejectInteractionInJsonMode(`-f/--force 参数(输出文件 ${outputPath} 已存在, 需确认覆盖)`)
       const {overwrite} = await prompts({
         message: `${outputPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -60,7 +63,7 @@ export default class FftChangeSpeed extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {audioPath, outputPath: null, speed}
       }
     }
     // #endregion
@@ -69,6 +72,8 @@ export default class FftChangeSpeed extends Command {
     this.log(`正在把 ${audioPath} 调速到 ${formatSpeed(speed)}x...`)
     await changeAudioSpeed(audioPath, speed, this, outputPath)
     // #endregion
+
+    return {audioPath, outputPath, speed}
   }
 
   // 优先取命令行参数, 缺省时交互式询问; 返回 null 表示用户取消
@@ -79,6 +84,7 @@ export default class FftChangeSpeed extends Command {
       return speed
     }
 
+    this.rejectInteractionInJsonMode('<speed> 参数')
     const {speed} = await prompts({
       message: '速度倍率(大于 1 加速, 小于 1 减速, 如 1.5):',
       name: 'speed',

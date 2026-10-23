@@ -42,10 +42,11 @@ export default class AucAsr extends BaseCommand {
     'auto-load': Flags.boolean({description: '自动装载所需模型(卸载其他已加载模型, 再装载 ASR 与对齐模型)', default: true}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{rawOutputPath: string; text: string; textOutputPath?: string; wordCount: number}> {
     const {args, flags} = await this.parse(AucAsr)
 
     // #region 确定源文件(交互选择或直通)
+    if (args.file === undefined) this.rejectInteractionInJsonMode('<file> 参数')
     const sourceFile = args.file ?? (await selectFile(MEDIA_EXTENSIONS, '请选择要转写的音视频文件:'))
     if (!existsSync(sourceFile)) this.error(`文件不存在: ${sourceFile}`)
     // #endregion
@@ -110,10 +111,12 @@ export default class AucAsr extends BaseCommand {
       if (flags.out === undefined) {
         this.log('')
         this.log(fullText)
-        return
+      } else {
+        writeFileSync(flags.out, fullText, 'utf8')
+        this.log(`已写入: ${flags.out}`)
       }
-      writeFileSync(flags.out, fullText, 'utf8')
-      this.log(`已写入: ${flags.out}`)
+
+      return {rawOutputPath, text: fullText, textOutputPath: flags.out, wordCount: alignedWords.length}
       // #endregion
     } finally {
       await preparedAudio.cleanup()

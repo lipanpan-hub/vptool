@@ -1,9 +1,10 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 
-import {FetchVideoWorkflow} from '../../lib/dyd/fetch-video-workflow.js'
+import {BaseCommand} from '../../lib/base-command.js'
+import {FetchVideoWorkflow, type FetchVideoResult} from '../../lib/dyd/fetch-video-workflow.js'
 import {providers} from '../../lib/dyd/tikhub-providers.js'
 
-export default class DydFetchOneVideo extends Command {
+export default class DydFetchOneVideo extends BaseCommand {
   static aliases = ["dy:fov"]
   static args = {
     input: Args.string({description: '抖音视频链接或分享文案', required: true}),
@@ -31,18 +32,25 @@ export default class DydFetchOneVideo extends Command {
     }),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<FetchVideoResult> {
     const {args, flags} = await this.parse(DydFetchOneVideo)
+
+    // 保存目录 prefix 必弹选择菜单, 无法用参数规避
+    this.rejectInteractiveOnlyInJsonMode('保存目录 prefix 只能交互选择')
 
     try {
       // 命令层只负责组装参数并委托给门面, 具体编排见 FetchVideoWorkflow
       const workflow = new FetchVideoWorkflow(
         args.input,
-        {keepAudio: flags['keep-audio'], output: flags.output, provider: flags.provider},
+        {
+          keepAudio: flags['keep-audio'],
+          output: flags.output,
+          provider: flags.provider,
+        },
         this.config.configDir,
         this,
       )
-      await workflow.execute()
+      return await workflow.execute()
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
     }

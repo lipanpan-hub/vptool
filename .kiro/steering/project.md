@@ -4,3 +4,4 @@
 - `vp dl`、`vp douyin fetch-one-video` 必定调用 `selectPrefix` 弹出交互菜单，`vp fft video-split-copy` 的起止时间只能交互输入，目前 Agent 无法非交互执行这几个命令。
 - `vp vtt restamp` 默认删除输入的 txt，需要 `-k` 才保留。
 - `vp dl sub` 默认输出到当前目录，传 `-l` 后没有交互，可以在 testmp 目录下直接实测（dQw4w9WgXcQ 有人工 en 和 157 条自动字幕，`zh-Hans` 只存在于自动字幕里）。
+- 所有命令统一继承 `BaseCommand`（`enableJsonFlag = true`），`run()` 必须返回对象，`--json` 时输出 `{ok, command, data}` / `{ok:false, command, error}` 信封；新增命令不要手写 `json` flag，也不要在 `--json` 下弹交互（用 `rejectInteractionInJsonMode` / `rejectInteractiveOnlyInJsonMode`），直接写 stdout 的进度条要改写 stderr。

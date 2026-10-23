@@ -186,3 +186,93 @@ export function displayVideoInfo(videoInfo: VideoInfo, logger: DisplayLogger): v
   logger.log('✅ 元信息获取完成')
   logger.log('═'.repeat(60))
 }
+
+// 字幕表转成列表, 每种语言一项
+function toSubtitleList(subtitleMap: VideoInfo['subtitles'] | undefined): VideoMetaSubtitle[] {
+  return Object.entries(subtitleMap ?? {}).map(([lang, tracks]) => ({
+    exts: tracks.map((track) => track.ext).filter(Boolean),
+    lang,
+    name: tracks.map((track) => track.name).find(Boolean) ?? lang,
+  }))
+}
+
+export interface VideoMetaSubtitle {
+  exts: string[]
+  lang: string
+  name: string
+}
+
+export interface VideoMetaFormat {
+  ext?: string
+  filesize?: number
+  formatId: string
+  formatNote?: string
+  resolution?: string
+}
+
+export interface VideoMeta {
+  acodec?: string
+  automaticCaptions: VideoMetaSubtitle[]
+  categories?: string[]
+  channel?: string
+  channelId?: string
+  commentCount?: number
+  description?: string
+  duration?: number
+  ext?: string
+  extractor?: string
+  formats: VideoMetaFormat[]
+  fps?: number
+  height?: number
+  id?: string
+  likeCount?: number
+  subtitles: VideoMetaSubtitle[]
+  tags?: string[]
+  thumbnail?: string
+  title: string
+  uploadDate?: string
+  uploader?: string
+  uploaderId?: string
+  vcodec?: string
+  viewCount?: number
+  webpageUrl?: string
+  width?: number
+}
+
+// 提取 --json 模式返回的结构化元信息(字段取自 yt-dlp 原始信息, 简介等不做截断)
+export function buildVideoMeta(videoInfo: VideoInfo): VideoMeta {
+  return {
+    acodec: videoInfo.acodec,
+    automaticCaptions: toSubtitleList(videoInfo.automatic_captions),
+    categories: videoInfo.categories,
+    channel: videoInfo.channel,
+    channelId: videoInfo.channel_id,
+    commentCount: videoInfo.comment_count,
+    description: videoInfo.description,
+    duration: videoInfo.duration,
+    ext: videoInfo.ext,
+    extractor: videoInfo.extractor,
+    formats: (videoInfo.formats ?? []).map((format) => ({
+      ext: format.ext,
+      filesize: format.filesize,
+      formatId: format.format_id,
+      formatNote: format.format_note,
+      resolution: format.resolution,
+    })),
+    fps: videoInfo.fps,
+    height: videoInfo.height,
+    id: videoInfo.id,
+    likeCount: videoInfo.like_count,
+    subtitles: toSubtitleList(videoInfo.subtitles),
+    tags: videoInfo.tags,
+    thumbnail: videoInfo.thumbnail,
+    title: videoInfo.title,
+    uploadDate: videoInfo.upload_date,
+    uploader: videoInfo.uploader,
+    uploaderId: videoInfo.uploader_id,
+    vcodec: videoInfo.vcodec,
+    viewCount: videoInfo.view_count,
+    webpageUrl: videoInfo.webpage_url,
+    width: videoInfo.width,
+  }
+}

@@ -1,11 +1,11 @@
+import {Args, Flags} from '@oclif/core'
 
-import {Args, Command, Flags} from '@oclif/core'
-
-import {displayVideoInfo} from '../../lib/dl/vmeta-display.js'
+import {BaseCommand} from '../../lib/base-command.js'
+import {buildVideoMeta, displayVideoInfo, type VideoMeta} from '../../lib/dl/vmeta-display.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
-export default class DlVmeta extends Command {
+export default class DlVmeta extends BaseCommand {
   static args = {
     url: Args.string({description: '视频链接', required: true}),
   }
@@ -26,7 +26,7 @@ export default class DlVmeta extends Command {
     }),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<VideoMeta> {
     const {args, flags} = await this.parse(DlVmeta)
     const videoUrl = args.url
     const useCookies = flags['use-cookies']
@@ -40,6 +40,7 @@ export default class DlVmeta extends Command {
       this.log('正在获取详细信息...')
       const videoInfo = await fetchVideoInfo(videoUrl, useCookies)
       displayVideoInfo(videoInfo, this)
+      return buildVideoMeta(videoInfo)
     } catch (error) {
       this.error(formatVideoError(error, useCookies, 'fetch'))
     }

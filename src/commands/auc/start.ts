@@ -3,11 +3,21 @@ import {resolve} from 'node:path'
 import prompts from 'prompts'
 
 import {BaseCommand} from '../../lib/base-command.js'
-import {AudioCppClient} from '../../lib/auc/audiocpp-client.js'
+import {AudioCppClient, type ModelInfo} from '../../lib/auc/audiocpp-client.js'
 import {AudioCppServerManager} from '../../lib/auc/audiocpp-server-manager.js'
 import {selectModelByDirectory, type ModelCandidate} from '../../lib/auc/model-locator.js'
 import {replaceLoadedModels, selectModelInteractively} from '../../lib/auc/model-switcher.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
+
+// --json 模式下的 data 结构
+interface StartResult {
+  backend: string
+  baseUrl: string
+  isAlreadyRunning: boolean
+  loadedModels: ModelInfo[]
+  logFilePath: string
+  target: ModelCandidate
+}
 
 export default class AucStart extends BaseCommand {
   static aliases = ['auc:start','auc:run']
@@ -27,7 +37,7 @@ export default class AucStart extends BaseCommand {
     package: Flags.string({description: '包 id(仅 --model 目录内含多个包时必填)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<StartResult> {
     const {flags} = await this.parse(AucStart)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -46,8 +56,9 @@ export default class AucStart extends BaseCommand {
       this.error(error instanceof Error ? error.message : String(error))
     }
 
-    // --model 传了就先定位目标模型, 目录无效时在启动服务前快速失败
+    // --model 传了就先定位目标模型, 目录无效时在启动服务前快速失败; 未传则后面要交互选择, JSON 模式提前拒绝
     let directTargetModel: ModelCandidate | null = null
+    if (flags.model === undefined) this.rejectInteractionInJsonMode('--model <模型包目录>')
     if (flags.model !== undefined) {
       try {
         directTargetModel = selectModelByDirectory(resolvedAudioCppDir, flags.model, flags.package)
@@ -78,6 +89,16 @@ export default class AucStart extends BaseCommand {
     const targetModel = directTargetModel ?? await selectModelInteractively(resolvedAudioCppDir)
     const client = new AudioCppClient({baseUrl: manager.baseUrl})
     await replaceLoadedModels({audioCppDir: resolvedAudioCppDir, client, log: (message) => this.log(message), target: targetModel})
+
+    const loadedModels = (await client.listModels()).filter((model) => model.loaded)
+    return {
+      backend: startResult.health.backend,
+      baseUrl: manager.baseUrl,
+      isAlreadyRunning: (startResult.kind === 'already-running'),
+      loadedModels,
+      logFilePath: manager.logFilePath,
+      target: targetModel,
+    }
     // #endregion
   }
 
@@ -93,6 +114,8 @@ export default class AucStart extends BaseCommand {
     this.log(`  连接状态: ${occupier.state ?? '未知'}`)
     this.log(`  程序路径: ${occupier.path ?? '未知(权限不足)'}`)
     this.log(`  命令行: ${occupier.commandLine ?? '未知'}`)
+
+    this.rejectInteractionInJsonMode('--port <其他可用端口>(端口被占用, 杀进程需要交互确认)')
 
     // Agent 终端不是 TTY, 无法应答确认, 直接报错并提示换端口
     if (!process.stdin.isTTY) {

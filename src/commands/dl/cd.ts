@@ -1,12 +1,13 @@
-import {Args, Command} from '@oclif/core'
+import {Args} from '@oclif/core'
 import {existsSync} from 'node:fs'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 import {browseDirectory} from '../../lib/dl/browse-directory.js'
 import {DirectoryIndex} from '../../lib/dl/directory-index.js'
 import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
 
-export default class DlCd extends Command {
+export default class DlCd extends BaseCommand {
   static args = {
     dir: Args.string({description: '要进入的目录名称（支持中文/拼音/首字母模糊匹配，唯一匹配时直接进入）', required: false}),
   }
@@ -15,8 +16,12 @@ export default class DlCd extends Command {
 
   static examples = ['<%= config.bin %> <%= command.id %>', '<%= config.bin %> <%= command.id %> mydir']
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{targetDir?: string}> {
     const {args} = await this.parse(DlCd)
+
+    // 命令的目的就是开交互子 shell(stdio: inherit), 无法用参数规避
+    this.rejectInteractiveOnlyInJsonMode('该命令会打开交互子 shell')
+
     const documentsPath = ToolConfigManager.fromConfigDir(this.config.configDir).getDocumentsPath()
 
     if (!existsSync(documentsPath)) {
@@ -31,10 +36,11 @@ export default class DlCd extends Command {
 
     if (!target) {
       this.log('已取消')
-      return
+      return {}
     }
 
     this.log(`进入目录: ${target} (输入 exit 退出并返回)`)
     await spawnShellAt(target)
+    return {targetDir: target}
   }
 }

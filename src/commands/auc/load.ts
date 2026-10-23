@@ -29,7 +29,7 @@ export default class AucLoad extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{id: string; loaded: boolean; path: string; task: string | undefined}> {
     const {args, flags} = await this.parse(AucLoad)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -57,5 +57,7 @@ export default class AucLoad extends BaseCommand {
     this.log(`正在装载: id=${loadRequest.id} task=${loadRequest.task} path=${loadRequest.path}`)
     const loadResult = await client.loadModel(loadRequest)
     this.log(`装载完成: id=${loadResult.id} loaded=${loadResult.loaded}`)
+
+    return {id: loadResult.id, loaded: loadResult.loaded, path: loadRequest.path, task: loadRequest.task}
   }
 }

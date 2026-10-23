@@ -28,7 +28,7 @@ export default class AucTts extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{outputPath: string; sizeBytes: number; voiceRefPath?: string}> {
     const {args, flags} = await this.parse(AucTts)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -62,5 +62,7 @@ export default class AucTts extends BaseCommand {
 
     writeFileSync(flags.out, audioBytes)
     this.log(`已生成语音(${Math.round(audioBytes.length / 1024)} KB): ${flags.out}`)
+
+    return {outputPath: flags.out, sizeBytes: audioBytes.length, voiceRefPath}
   }
 }

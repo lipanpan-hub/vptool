@@ -18,8 +18,12 @@ export default class BupCfset extends BaseCommand {
     '<%= config.bin %> <%= command.id %>',
   ]
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{biliupRDir: string; configPath: string}> {
     const {args} = await this.parse(BupCfset)
+
+    if (args.dir === undefined) {
+      this.rejectInteractionInJsonMode('<dir> 参数(biliupR 目录路径)')
+    }
 
     // 统一转绝对路径, 避免相对路径在不同工作目录下语义漂移
     const biliupRDir = resolve(args.dir ?? (await promptRequiredText('请输入 biliupR 的目录路径:')))
@@ -35,5 +39,6 @@ export default class BupCfset extends BaseCommand {
     configManager.setBiliupRDir(biliupRDir)
     this.log(`已将 biliupR 目录写入配置: ${biliupRDir}`)
     this.log(`配置文件: ${configManager.getConfigPath()}`)
+    return {biliupRDir, configPath: configManager.getConfigPath()}
   }
 }

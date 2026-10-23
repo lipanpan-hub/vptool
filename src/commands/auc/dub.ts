@@ -34,10 +34,11 @@ export default class AucDub extends BaseCommand {
     'voice-ref': Flags.string({char: 'r', description: '参考音频 wav 路径, 克隆其音色, 优先于 --voice'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{cacheDir: string; vttPath: string; wavPath: string}> {
     const {args, flags} = await this.parse(AucDub)
 
     // #region 确定输入字幕与输出参数
+    if (args.vtt === undefined) this.rejectInteractionInJsonMode('<vtt> 参数')
     const vttPath = args.vtt ?? (await selectFile(['.vtt'], '请选择要配音的 VTT 字幕文件:'))
     if (!existsSync(vttPath)) this.error(`文件不存在: ${vttPath}`)
     if ((flags['voice-ref'] !== undefined) && !existsSync(flags['voice-ref'])) {
@@ -97,6 +98,8 @@ export default class AucDub extends BaseCommand {
     const result = await pipeline.dub(vttPath, flags.outdir)
     this.log(`\n完成, 完整配音: ${result.wavPath}`)
     this.log(`单条配音缓存(断点续跑): ${result.cacheDir}`)
+
+    return {cacheDir: result.cacheDir, vttPath, wavPath: result.wavPath}
     // #endregion
   }
 }

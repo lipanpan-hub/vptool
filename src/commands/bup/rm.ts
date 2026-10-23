@@ -25,9 +25,13 @@ export default class BupRm extends BaseCommand {
     bind: Flags.string({description: 'biliup 服务绑定地址', default: BILIUP_DEFAULT_BIND}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{id: number; remark: string}> {
     const {args, flags} = await this.parse(BupRm)
     const client = createBiliupClient(flags.port, flags.bind)
+
+    if (args.id === undefined) {
+      this.rejectInteractionInJsonMode('<id> 参数(主播 id)')
+    }
 
     // 未传 id 时交互式选择, 传了则校验存在性
     const target = (args.id === undefined)
@@ -36,5 +40,6 @@ export default class BupRm extends BaseCommand {
 
     await client.deleteStreamer(target.id)
     this.log(`已删除监控主播: [${target.id}] ${target.remark}`)
+    return {id: target.id, remark: target.remark}
   }
 }

@@ -32,7 +32,7 @@ interface FfprobeFormat {
   tags?: Record<string, string>
 }
 
-interface FfprobeResult {
+export interface FfprobeResult {
   format: FfprobeFormat
   streams: FfprobeStream[]
 }
@@ -233,12 +233,13 @@ function displayStreams(streams: FfprobeStream[], logger: ProbeLogger): void {
 }
 // #endregion
 
-// 调用 ffprobe 探测媒体信息并以人类可读方式输出
-export async function probeMedia(mediaPath: string, logger: ProbeLogger): Promise<void> {
+// 调用 ffprobe 探测媒体信息并以人类可读方式输出, 同时返回 ffprobe 原始解析结果
+export async function probeMedia(mediaPath: string, logger: ProbeLogger): Promise<FfprobeResult> {
   const result = await runFfprobe(mediaPath)
   displayFormat(result.format, logger)
   displayStreams(result.streams ?? [], logger)
   logger.log('\n' + '═'.repeat(60))
   logger.log('✅ 媒体信息读取完成')
   logger.log('═'.repeat(60))
+  return result
 }

@@ -4,7 +4,14 @@ import {existsSync} from 'node:fs'
 import {join, resolve} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
-import {UPLOAD_LINES, collectUploadVideoPaths, promptUploadOptions} from '../../lib/bup/interactive.js'
+import {
+  UPLOAD_LINES,
+  collectUploadVideoPaths,
+  fillUploadOptionsWithDefaults,
+  promptUploadOptions,
+  type BupUploadFlagsSnapshot,
+  type BupUploadOptions,
+} from '../../lib/bup/interactive.js'
 import {UPLOAD_PRESET_FILENAME, loadUploadPreset, mergeUploadSources, saveUploadPreset, type UploadPreset} from '../../lib/bup/upload-preset.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
@@ -47,7 +54,7 @@ export default class BupUpload extends BaseCommand {
     fromYaml: Flags.string({description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{presetPath: string; uploadOptions: BupUploadOptions; videoPaths: string[]}> {
     const {argv, flags} = await this.parse(BupUpload)
 
     const biliupRDir = ToolConfigManager.fromConfigDir(this.config.configDir).getBiliupRDir()
@@ -63,6 +70,9 @@ export default class BupUpload extends BaseCommand {
     // #endregion
 
     // #region 确定待上传文件(预设列表/交互选择/直通), 全部规范化为绝对路径(biliup 以 biliupR 目录为 cwd 启动, 相对路径会指向错误位置)
+    if (mergedFiles.length === 0) {
+      this.rejectInteractionInJsonMode('<files> 参数(视频文件路径)或 --from-yaml <预设文件>')
+    }
     let videoPaths: string[]
     try {
       videoPaths = await collectUploadVideoPaths(mergedFiles, () => selectFile(VIDEO_EXTENSIONS, '请选择要投稿的视频文件:'))
@@ -72,12 +82,7 @@ export default class BupUpload extends BaseCommand {
     // #endregion
 
     // #region 交互补全未提供的投稿参数(命令行/预设已提供的原样沿用)
-    // 预设中的封面文件已不存在时视为未提供, 回退交互重问
-    if (mergedFlags.cover !== undefined && !existsSync(mergedFlags.cover)) {
-      this.warn(`封面文件不存在, 将重新询问: ${mergedFlags.cover}`)
-      mergedFlags.cover = undefined
-    }
-    const uploadOptions = await promptUploadOptions(mergedFlags)
+    const uploadOptions = await this.resolveUploadOptions(mergedFlags)
     // 封面统一解析为绝对路径(biliup cwd 在 biliupR 目录, 交互选择返回裸文件名)
     if (uploadOptions.cover !== undefined) uploadOptions.cover = resolve(uploadOptions.cover)
     // #endregion
@@ -106,9 +111,10 @@ export default class BupUpload extends BaseCommand {
     this.log(`开始上传 ${videoPaths.length} 个文件到B站...`)
     // spawn 在 Windows 下不会从 cwd 选项解析可执行文件, 必须用绝对路径
     const biliupExePath = join(biliupRDir, 'biliup.exe')
+    // JSON 模式把子进程 stdout(fd 1)重定向到 stderr(fd 2), 保证 stdout 只留结果 JSON
     const spawnResult = spawnSync(biliupExePath, biliupArguments, {
       cwd: biliupRDir,
-      stdio: 'inherit',
+      stdio: this.jsonEnabled() ? ['inherit', 2, 'inherit'] : 'inherit',
       shell: false,
     })
     if (spawnResult.error !== undefined) {
@@ -119,6 +125,25 @@ export default class BupUpload extends BaseCommand {
     }
     this.log('投稿完成')
     // #endregion
+
+    return {presetPath, uploadOptions, videoPaths}
+  }
+
+  // 补全投稿参数: 交互模式逐项提问; JSON 模式不提问, 转载必须显式给来源, 其余未提供项取交互默认值
+  private async resolveUploadOptions(mergedFlags: BupUploadFlagsSnapshot): Promise<BupUploadOptions> {
+    // 预设中的封面文件已不存在时视为未提供, 回退交互重问
+    if (mergedFlags.cover !== undefined && !existsSync(mergedFlags.cover)) {
+      this.warn(`封面文件不存在, 将重新询问: ${mergedFlags.cover}`)
+      mergedFlags.cover = undefined
+    }
+
+    if (!this.jsonEnabled()) {
+      return promptUploadOptions(mergedFlags)
+    }
+    if ((mergedFlags.copyright === 2) && (mergedFlags.source === undefined)) {
+      this.rejectInteractionInJsonMode('--source <转载来源>(copyright=2 时必填)')
+    }
+    return fillUploadOptionsWithDefaults(mergedFlags)
   }
 
   // 读取 --from-yaml 指定的预设(相对路径按当前目录解析); 未传 flag 返回 undefined, 文件非法时终止命令

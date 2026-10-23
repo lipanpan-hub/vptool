@@ -14,7 +14,7 @@ export default class AucVoices extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{model: string; voices: string[]}> {
     const {flags} = await this.parse(AucVoices)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -27,10 +27,12 @@ export default class AucVoices extends BaseCommand {
 
     if (voices.length === 0) {
       this.log(`模型 ${flags.model} 没有可用音色`)
-      return
+      return {model: flags.model, voices}
     }
     for (const voiceName of voices) {
       this.log(voiceName)
     }
+
+    return {model: flags.model, voices}
   }
 }

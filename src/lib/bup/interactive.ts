@@ -227,6 +227,27 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
 }
 
 /**
+ * 不提问直接补全 upload 的投稿参数(--json 模式用): 未提供的 tid/copyright/limit 取交互默认值, 其余保持 undefined。
+ */
+export function fillUploadOptionsWithDefaults(flags: BupUploadFlagsSnapshot): BupUploadOptions {
+  // 显式挑字段, 避免把 oclif flags 里的无关键(如 fromYaml)带进预设落盘
+  return {
+    copyright: flags.copyright ?? 1,
+    cover: flags.cover,
+    desc: flags.desc,
+    dtime: flags.dtime,
+    dynamic: flags.dynamic,
+    limit: flags.limit ?? 3,
+    line: flags.line,
+    source: flags.source,
+    submit: flags.submit,
+    tag: flags.tag,
+    tid: flags.tid ?? 171,
+    title: flags.title,
+  }
+}
+
+/**
  * 询问一段可留空的文本, 回车跳过返回 undefined; 提供 validate 时对非空输入校验。
  */
 async function askOptionalText(message: string, validate?: (inputValue: string) => string | true): Promise<string | undefined> {

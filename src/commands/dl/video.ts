@@ -1,6 +1,7 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {join} from 'node:path'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
@@ -10,7 +11,7 @@ import {resolveAutoEnglishSubtitleLang} from '../../lib/dl/select-subtitle.js'
 import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 
-export default class DlVideo extends Command {
+export default class DlVideo extends BaseCommand {
   static args = {
     url: Args.string({description: '视频链接', required: true}),
   }
@@ -51,8 +52,12 @@ export default class DlVideo extends Command {
     }),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{formatId: string; title: string; videoDir?: string}> {
     const {args, flags} = await this.parse(DlVideo)
+
+    // 保存目录 prefix 必弹选择菜单, 无法用参数规避
+    this.rejectInteractiveOnlyInJsonMode('保存目录 prefix 只能交互选择')
+
     const videoUrl = args.url
     const useCookies = flags['use-cookies']
     const formatId = flags['format-id']
@@ -114,6 +119,8 @@ export default class DlVideo extends Command {
         this.log(`\n进入目录: ${videoDir} (输入 exit 退出并返回)`)
         await spawnShellAt(videoDir)
       }
+
+      return {formatId: selectedFormatId, title: videoInfo.title, videoDir}
     } catch (error) {
       this.error(formatVideoError(error, useCookies, 'download'))
     }

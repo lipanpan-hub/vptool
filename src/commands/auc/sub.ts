@@ -49,10 +49,11 @@ export default class AucSub extends BaseCommand {
     'auto-load': Flags.boolean({description: '自动装载所需模型(卸载其他已加载模型, 再装载 ASR 与对齐模型)', default: true}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{subtitlePath: string; textPath?: string; wordCount: number}> {
     const {args, flags} = await this.parse(AucSub)
 
     // #region 确定源文件(交互选择或直通)
+    if (args.file === undefined) this.rejectInteractionInJsonMode('<file> 参数')
     const sourceFile = args.file ?? (await selectFile(MEDIA_EXTENSIONS, '请选择要生成字幕的音视频文件:'))
     if (!existsSync(sourceFile)) this.error(`文件不存在: ${sourceFile}`)
     // #endregion
@@ -134,6 +135,8 @@ export default class AucSub extends BaseCommand {
         writeFileSync(textPath, `${singleCue.text}\n`, 'utf8')
         this.log(`已生成纯文本文档(整段): ${textPath}`)
       }
+
+      return {subtitlePath: outputPath, textPath, wordCount: alignedWords.length}
       // #endregion
     } finally {
       await preparedAudio.cleanup()

@@ -1,9 +1,11 @@
-import {Command, Flags} from '@oclif/core'
+import {Flags} from '@oclif/core'
 
-import {checkEnvironment} from '../../lib/dl/check-environment.js'
+import {BaseCommand} from '../../lib/base-command.js'
+import {checkEnvironment, type EnvironmentStatus} from '../../lib/dl/check-environment.js'
 import {downloadBinaries} from '../../lib/dl/download-binaries.js'
+import {withStdoutToStderr} from '../../lib/dl/redirect-stdout.js'
 
-export default class DlCheck extends Command {
+export default class DlCheck extends BaseCommand {
   static description = '检查基础环境是否就绪（打印 yt-dlp 与 ffmpeg 的路径和版本）'
 
   static examples = ['<%= config.bin %> <%= command.id %>', '<%= config.bin %> <%= command.id %> --update']
@@ -12,18 +14,20 @@ export default class DlCheck extends Command {
     update: Flags.boolean({char: 'u', description: '下载并更新所需的二进制 (yt-dlp 与 ffmpeg)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<EnvironmentStatus> {
     const {flags} = await this.parse(DlCheck)
 
     if (flags.update) {
       this.log('开始下载/更新二进制...\n')
-      await downloadBinaries((msg) => this.log(msg))
+      // ytdlp-nodejs 的下载函数会直接 console.log/写进度到 stdout, JSON 模式下转到 stderr
+      await withStdoutToStderr(this.jsonEnabled(), () => downloadBinaries((msg) => this.log(msg)))
       this.log('')
     }
 
     this.log('正在检查基础环境...\n')
 
-    const {ffmpeg, ready, ytdlp} = checkEnvironment()
+    const environmentStatus = checkEnvironment()
+    const {ffmpeg, ready, ytdlp} = environmentStatus
 
     // 打印 yt-dlp 信息
     if (ytdlp.found) {
@@ -48,5 +52,7 @@ export default class DlCheck extends Command {
     } else {
       this.log('⚠️  依赖未就绪，请先下载缺失的二进制')
     }
+
+    return environmentStatus
   }
 }

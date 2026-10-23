@@ -5,6 +5,7 @@ import {
   BILIUP_DEFAULT_BIND,
   BILIUP_DEFAULT_PORT,
   createBiliupClient,
+  type BiliupStreamer,
 } from '../../lib/bup/biliup-client.js'
 import {promptRequiredText} from '../../lib/bup/interactive.js'
 
@@ -28,10 +29,16 @@ export default class BupAdd extends BaseCommand {
     prefix: Flags.string({description: '录制文件名前缀'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<BiliupStreamer> {
     const {args, flags} = await this.parse(BupAdd)
 
     // #region 确定直播间地址与备注(缺省时交互式输入)
+    if (args.url === undefined) {
+      this.rejectInteractionInJsonMode('<url> 参数(直播间地址)')
+    }
+    if (flags.remark === undefined) {
+      this.rejectInteractionInJsonMode('--remark <备注名称>')
+    }
     const liveUrl = args.url ?? (await promptRequiredText('请输入直播间地址(支持 B 站/抖音/斗鱼/虎牙等平台):'))
     const remark = flags.remark ?? (await promptRequiredText('请输入备注名称(列表中显示的名字):'))
     // #endregion
@@ -47,5 +54,6 @@ export default class BupAdd extends BaseCommand {
 
     this.log(`已添加监控主播: [${streamer.id}] ${streamer.remark}`)
     this.log(`直播间: ${streamer.url}`)
+    return streamer
   }
 }

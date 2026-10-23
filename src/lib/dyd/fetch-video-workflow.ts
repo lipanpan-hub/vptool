@@ -4,7 +4,7 @@ import type {DouyinProvider, ResolvedInput} from './provider.js'
 
 import {ToolConfigManager} from '../config/index.js'
 import {selectPrefix} from '../dl/select-prefix.js'
-import {DouyinVideoDownloader} from './download-douyin.js'
+import {type DownloadDouyinResult, DouyinVideoDownloader} from './download-douyin.js'
 import {ensureTikhubToken} from './ensure-token.js'
 import {resolveInput} from './resolve-input.js'
 import {selectProvider} from './select-provider.js'
@@ -20,6 +20,10 @@ export interface FetchVideoOptions {
   provider?: string
 }
 
+export interface FetchVideoResult extends DownloadDouyinResult {
+  awemeId: string
+}
+
 // 门面模式(Facade): 将 token 获取、输入解析、接口选择、下载抽音等子系统
 // 统一封装到高层入口 execute() 之后, 命令层只与本门面交互, 无需了解内部编排细节
 export class FetchVideoWorkflow {
@@ -30,12 +34,13 @@ export class FetchVideoWorkflow {
     private readonly logger: Logger,
   ) {}
 
-  async execute(): Promise<void> {
+  async execute(): Promise<FetchVideoResult> {
     const token = await this.resolveToken()
     const input = await this.resolveInput()
     const provider = await this.chooseProvider()
-    await this.download(provider, input, token)
+    const downloadResult = await this.download(provider, input, token)
     this.logger.log('\n✅ 下载完成!')
+    return {awemeId: input.awemeId, ...downloadResult}
   }
 
   private async chooseProvider(): Promise<DouyinProvider> {
@@ -43,7 +48,7 @@ export class FetchVideoWorkflow {
     return this.options.provider ? findProvider(this.options.provider)! : selectProvider()
   }
 
-  private async download(provider: DouyinProvider, input: ResolvedInput, token: string): Promise<void> {
+  private async download(provider: DouyinProvider, input: ResolvedInput, token: string): Promise<DownloadDouyinResult> {
     const baseOutputDir = this.options.output || ToolConfigManager.fromConfigDir(this.configDir).getDocumentsPath()
     const prefix = await selectPrefix(this.configDir)
     const outputBaseDir = join(baseOutputDir, prefix)
@@ -53,7 +58,7 @@ export class FetchVideoWorkflow {
       {extractAudio: this.options.keepAudio, outputBaseDir, token},
       this.logger,
     )
-    await downloader.download()
+    return downloader.download()
   }
 
   private async resolveInput(): Promise<ResolvedInput> {

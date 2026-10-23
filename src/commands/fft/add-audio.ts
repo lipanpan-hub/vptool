@@ -5,10 +5,11 @@
 // 源名带 .old. 时视为备份文件, 不再改名备份, 合并结果直接占用去 old 后的名字
 // 可选把 vtt 字幕烧写进合并结果(此时视频重编码): 用 --subtitle 传入, 或交互确认后选择
 
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {existsSync, unlinkSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {addAudioToVideo, buildBackupPath, buildOriginalPath} from '../../lib/fft/add-audio.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
@@ -17,7 +18,7 @@ const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.webm', '.ts'
 const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma']
 const SUBTITLE_EXTENSIONS = ['.vtt']
 
-export default class FftAddAudio extends Command {
+export default class FftAddAudio extends BaseCommand {
   static aliases = ['fft:aa']
 
   static args = {
@@ -39,23 +40,32 @@ export default class FftAddAudio extends Command {
     subtitle: Flags.string({char: 's', description: '要烧写进合并结果的 vtt 字幕文件(省略则交互询问是否烧写)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{
+    audioPath: string
+    backupPath: null | string
+    isAudioDeleted: boolean
+    outputPath: null | string
+    subtitlePath: null | string
+    videoPath: string
+  }> {
     const {args, flags} = await this.parse(FftAddAudio)
 
     // #region 选择源视频
+    if (!args.video) this.rejectInteractionInJsonMode('<video> 参数')
     const videoPath = args.video ?? (await selectFile(VIDEO_EXTENSIONS, '请选择要加入音轨的视频文件:'))
     if (!existsSync(videoPath)) this.error(`文件不存在: ${videoPath}`)
     // #endregion
 
     // #region 选择要合并的音轨
+    if (!args.audio) this.rejectInteractionInJsonMode('<audio> 参数')
     const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要加入的音轨文件:'))
     if (!existsSync(audioPath)) this.error(`文件不存在: ${audioPath}`)
     // #endregion
 
     // #region 确定要烧写进结果的字幕
-    // 未用 --subtitle 传入时交互询问是否烧写, 确认需要时再选字幕文件
+    // 未用 --subtitle 传入时交互询问是否烧写, 确认需要时再选字幕文件; JSON 模式不询问, 视为不烧写
     let subtitlePath = flags.subtitle
-    if (!subtitlePath) {
+    if (!subtitlePath && !this.jsonEnabled()) {
       const {isBurnNeeded} = await prompts({
         message: '是否需要把字幕烧写进合并后的视频?',
         name: 'isBurnNeeded',
@@ -75,6 +85,7 @@ export default class FftAddAudio extends Command {
 
     // #region 会被覆盖的文件已存在时先询问
     if (existsSync(conflictPath)) {
+      this.rejectInteractionInJsonMode(`先删除已存在的文件 ${conflictPath}(该命令无 --force, 覆盖需交互确认)`)
       const {overwrite} = await prompts({
         message: `${conflictPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -82,14 +93,23 @@ export default class FftAddAudio extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {
+          audioPath,
+          backupPath: null,
+          isAudioDeleted: false,
+          outputPath: null,
+          subtitlePath: subtitlePath ?? null,
+          videoPath,
+        }
       }
     }
     // #endregion
 
     // #region 执行合并
     this.log(`正在把 ${audioPath} 合并进 ${videoPath}...`)
-    await addAudioToVideo(videoPath, audioPath, {subtitlePath}, this)
+    // JSON 模式下烧写进度行改写到 stderr, 保证 stdout 只有结果 JSON
+    const progressStream = this.jsonEnabled() ? process.stderr : process.stdout
+    await addAudioToVideo(videoPath, audioPath, {progressStream, subtitlePath}, this)
     // #endregion
 
     // #region 按需删除源音频
@@ -98,5 +118,14 @@ export default class FftAddAudio extends Command {
       this.log(`已删除音频文件: ${audioPath}`)
     }
     // #endregion
+
+    return {
+      audioPath,
+      backupPath: isBackupMode ? conflictPath : null,
+      isAudioDeleted: flags['delete-audio'],
+      outputPath,
+      subtitlePath: subtitlePath ?? null,
+      videoPath,
+    }
   }
 }

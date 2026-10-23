@@ -1,10 +1,11 @@
 // 这个命令的作用是把 vtt 字幕永久烧写(硬字幕)进视频画面
 // 交互式选择视频与字幕文件; 字幕要合成进画面, 视频必须重编码, 音频保持不重编码
 
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {
   burnSubtitle,
   buildBurnedPath,
@@ -21,7 +22,7 @@ import {selectFile} from '../../lib/vtt/select-file.js'
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.webm', '.ts', '.m4v']
 const SUBTITLE_EXTENSIONS = ['.vtt']
 
-export default class FftBurnSubtitle extends Command {
+export default class FftBurnSubtitle extends BaseCommand {
   static aliases = ['fft:bs']
 
   static args = {
@@ -50,7 +51,7 @@ export default class FftBurnSubtitle extends Command {
     output: Flags.string({char: 'o', description: '输出文件路径(默认在源文件旁生成带 .burned 后缀的新文件)'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{outputPath: null | string; subtitlePath: string; videoPath: string}> {
     const {args, flags} = await this.parse(FftBurnSubtitle)
 
     // #region 校验命令行传入的样式与编码参数
@@ -74,11 +75,13 @@ export default class FftBurnSubtitle extends Command {
     // #endregion
 
     // #region 选择源视频
+    if (!args.video) this.rejectInteractionInJsonMode('<video> 参数')
     const videoPath = args.video ?? (await selectFile(VIDEO_EXTENSIONS, '请选择要烧写字幕的视频文件:'))
     if (!existsSync(videoPath)) this.error(`文件不存在: ${videoPath}`)
     // #endregion
 
     // #region 选择字幕文件
+    if (!args.subtitle) this.rejectInteractionInJsonMode('<subtitle> 参数')
     const subtitlePath = args.subtitle ?? (await selectFile(SUBTITLE_EXTENSIONS, '请选择要烧写的 vtt 字幕文件:'))
     if (!existsSync(subtitlePath)) this.error(`文件不存在: ${subtitlePath}`)
     // #endregion
@@ -86,6 +89,7 @@ export default class FftBurnSubtitle extends Command {
     // #region 输出已存在时按 --force 决定是否覆盖
     const outputPath = flags.output ?? buildBurnedPath(videoPath)
     if (existsSync(outputPath) && !flags.force) {
+      this.rejectInteractionInJsonMode(`-f/--force 参数(输出文件 ${outputPath} 已存在, 需确认覆盖)`)
       const {overwrite} = await prompts({
         message: `${outputPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -93,7 +97,7 @@ export default class FftBurnSubtitle extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {outputPath: null, subtitlePath, videoPath}
       }
     }
     // #endregion
@@ -109,7 +113,11 @@ export default class FftBurnSubtitle extends Command {
     }
 
     this.log(`正在把 ${subtitlePath} 烧写进 ${videoPath}...`)
-    await burnSubtitle(videoPath, subtitlePath, {crf: flags.crf, outputPath, style}, this)
+    // JSON 模式下进度行改写到 stderr, 保证 stdout 只有结果 JSON
+    const progressStream = this.jsonEnabled() ? process.stderr : process.stdout
+    await burnSubtitle(videoPath, subtitlePath, {crf: flags.crf, outputPath, progressStream, style}, this)
     // #endregion
+
+    return {outputPath, subtitlePath, videoPath}
   }
 }

@@ -28,6 +28,8 @@ export interface SubtitleStyle {
 export interface BurnSubtitleOptions {
   crf?: number
   outputPath?: string
+  // 进度行写入的流, 默认 stdout; --json 模式下传 stderr 以保证 stdout 只有结果 JSON
+  progressStream?: NodeJS.WriteStream
   style?: SubtitleStyle
 }
 // #endregion
@@ -232,20 +234,24 @@ export function renderProgressLine(sample: FfmpegProgressSample, totalSeconds: n
 
 // 就地刷新单行进度: 每次先抹掉上一次的内容再写新行, 避免新行更短时残留尾部字符
 class ProgressLine {
-  private readonly isEnabled = Boolean(process.stdout.isTTY)
+  private readonly isEnabled: boolean
   private lastLength = 0
+
+  constructor(private readonly stream: NodeJS.WriteStream) {
+    this.isEnabled = Boolean(stream.isTTY)
+  }
 
   clear(): void {
     if (!this.isEnabled || (this.lastLength === 0)) return
 
-    process.stdout.write(`\r${' '.repeat(this.lastLength)}\r`)
+    this.stream.write(`\r${' '.repeat(this.lastLength)}\r`)
     this.lastLength = 0
   }
 
   update(line: string): void {
     if (!this.isEnabled) return
 
-    process.stdout.write(`\r${' '.repeat(this.lastLength)}\r${line}`)
+    this.stream.write(`\r${' '.repeat(this.lastLength)}\r${line}`)
     this.lastLength = line.length
   }
 }
@@ -281,7 +287,7 @@ export async function burnSubtitle(
   const crf = options.crf ?? strategy.defaultCrf
   const sourceAudioCodec = await readAudioCodec(videoPath)
   const totalSeconds = await readTotalSecondsSafely(videoPath)
-  const progressLine = new ProgressLine()
+  const progressLine = new ProgressLine(options.progressStream ?? process.stdout)
 
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, [

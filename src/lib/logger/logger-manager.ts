@@ -63,12 +63,16 @@ export class LoggerManager {
     return this.rootLogger.child({scope, ...bindings}, {level})
   }
 
-  init(configDir: string): Logger {
+  init(configDir: string, options: {isConsoleMuted?: boolean} = {}): Logger {
     // 幂等: 一个进程只构建一次 transport 通道
     if (this.rootLogger) return this.rootLogger
 
     // 加载 transport 配置多级覆盖 用户配置覆盖默认配置 环境变量配置覆盖用户配置 
-    const config = LoggerConfigLoader.load(configDir)
+    const loadedConfig = LoggerConfigLoader.load(configDir)
+    // JSON 模式下 stdout 只能留给结果 JSON, 控制台 transport 必须关掉(文件 transport 不受影响)
+    const config: LoggerConfig = options.isConsoleMuted
+      ? {...loadedConfig, console: {...loadedConfig.console, isEnabled: false}}
+      : loadedConfig
     const targets = new TransportFactory(config, configDir).createTargets()
     this.loadedConfig = config
 

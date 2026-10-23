@@ -1,8 +1,8 @@
 import {Args, Flags} from '@oclif/core'
 
 import {BaseCommand} from '../../lib/base-command.js'
-import {AudioCppClient} from '../../lib/auc/audiocpp-client.js'
-import {selectModelByDirectory} from '../../lib/auc/model-locator.js'
+import {AudioCppClient, type ModelInfo} from '../../lib/auc/audiocpp-client.js'
+import {selectModelByDirectory, type ModelCandidate} from '../../lib/auc/model-locator.js'
 import {replaceLoadedModels, selectModelInteractively} from '../../lib/auc/model-switcher.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 
@@ -26,7 +26,7 @@ export default class AucUse extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{loadedModels: ModelInfo[]; target: ModelCandidate}> {
     const {args, flags} = await this.parse(AucUse)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -35,6 +35,7 @@ export default class AucUse extends BaseCommand {
     }
 
     // #region 确定目标模型(交互选择或目录直通)
+    if (args.dir === undefined) this.rejectInteractionInJsonMode('<dir> 参数(目标模型包目录)')
     const targetModel = (args.dir === undefined)
       ? await selectModelInteractively(audioCppDir)
       : selectModelByDirectory(audioCppDir, args.dir, flags.package)
@@ -42,5 +43,9 @@ export default class AucUse extends BaseCommand {
 
     const client = new AudioCppClient({baseUrl: `http://127.0.0.1:${flags.port}`})
     await replaceLoadedModels({audioCppDir, client, log: (message) => this.log(message), target: targetModel})
+
+    // 换装后的最终装载状态
+    const loadedModels = (await client.listModels()).filter((model) => model.loaded)
+    return {loadedModels, target: targetModel}
   }
 }

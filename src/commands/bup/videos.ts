@@ -21,28 +21,25 @@ export default class BupVideos extends BaseCommand {
   static flags = {
     port: Flags.integer({description: 'biliup 服务端口', default: BILIUP_DEFAULT_PORT}),
     bind: Flags.string({description: 'biliup 服务绑定地址', default: BILIUP_DEFAULT_BIND}),
-    json: Flags.boolean({description: '以 JSON 输出原始数据'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<BiliupVideo[]> {
     const {flags} = await this.parse(BupVideos)
     const client = createBiliupClient(flags.port, flags.bind)
 
     const videos = await client.listVideos()
-    if (flags.json) {
-      this.log(JSON.stringify(videos, null, 2))
-      return
-    }
 
     if (videos.length === 0) {
       this.log('暂无录制产出文件')
-      return
+      return videos
     }
 
     this.log(`共 ${videos.length} 个文件:\n`)
     for (const video of videos) {
       this.log(`[${video.id}] ${describeVideo(video)}`)
     }
+
+    return videos
   }
 }
 

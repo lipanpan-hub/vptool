@@ -17,7 +17,7 @@ export default class AucUnload extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{modelId: string}> {
     const {args, flags} = await this.parse(AucUnload)
 
     const audioCppDir = ToolConfigManager.fromConfigDir(this.config.configDir).getAudioCppDir()
@@ -28,5 +28,7 @@ export default class AucUnload extends BaseCommand {
     const client = new AudioCppClient({baseUrl: `http://127.0.0.1:${flags.port}`})
     await client.unloadModel(args.modelId)
     this.log(`已卸载模型: ${args.modelId}`)
+
+    return {modelId: args.modelId}
   }
 }

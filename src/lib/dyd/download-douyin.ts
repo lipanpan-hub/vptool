@@ -13,6 +13,12 @@ export interface DownloadDouyinOptions {
   token: string
 }
 
+export interface DownloadDouyinResult {
+  audioPath?: string
+  title: string
+  videoPath: string
+}
+
 interface Logger {
   log: (message: string) => void
 }
@@ -55,7 +61,7 @@ export class DouyinVideoDownloader {
     private readonly logger?: Logger,
   ) {}
 
-  async download(): Promise<void> {
+  async download(): Promise<DownloadDouyinResult> {
     const {extractAudio, outputBaseDir, token} = this.options
 
     this.logger?.log(`\n正在使用接口 [${this.provider.id}] 解析视频地址...`)
@@ -71,11 +77,14 @@ export class DouyinVideoDownloader {
     this.logger?.log(`保存位置: ${videoPath}\n`)
     await this.fetchToFile(video.videoUrl, videoPath)
 
+    let audioPath: string | undefined
     if (extractAudio) {
       this.logger?.log('\n🎵 正在抽取音频...')
-      const mp3Path = await extractAudioToMp3(videoPath, this.logger)
-      this.logger?.log(`✓ 音频已保存: ${mp3Path}`)
+      audioPath = await extractAudioToMp3(videoPath, this.logger)
+      this.logger?.log(`✓ 音频已保存: ${audioPath}`)
     }
+
+    return {audioPath, title: video.desc || video.awemeId, videoPath}
   }
 
   private async fetchToFile(url: string, dest: string): Promise<void> {

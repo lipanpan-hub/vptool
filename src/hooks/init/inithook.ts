@@ -4,11 +4,14 @@ import {checkFirefoxInstalled} from '../../lib/hooks/check-firefox.js'
 
 const hook: Hook<'init'> = async function (options) {
 
+  // JSON 模式下 stdout 只能留给结果 JSON, hook 阶段拿不到命令实例, 直接看 argv
+  const isJsonMode = (options.argv ?? []).includes('--json')
+
   // #region 配置文件初始化
   // 确保 configDir 下存在 config.yml,不存在则创建含默认档案的配置文件
   const configManager = ToolConfigManager.fromConfigDir(options.config.configDir)
-  this.log(configManager.getConfigPath())
-  if (configManager.ensureConfig()) {
+  if (!isJsonMode) this.log(configManager.getConfigPath())
+  if (configManager.ensureConfig() && !isJsonMode) {
     this.log(`已创建默认配置文件: ${configManager.getConfigPath()}`)
   }
   // #endregion

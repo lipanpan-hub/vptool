@@ -20,6 +20,8 @@ export function buildOriginalPath(videoPath: string): string {
 
 // #region 类型定义
 export interface AddAudioOptions {
+  // 烧写字幕时进度行写入的流, 默认 stdout; --json 模式下传 stderr
+  progressStream?: NodeJS.WriteStream
   // 要烧写进合并结果的 vtt 字幕文件; 提供时合并后重编码烧写, 再用烧写结果替换合并结果
   subtitlePath?: string
 }
@@ -63,7 +65,7 @@ export async function addAudioToVideo(
 
   // #region 按需把字幕烧写进合并结果
   if (options.subtitlePath) {
-    await burnSubtitleIntoOutput(outputPath, options.subtitlePath)
+    await burnSubtitleIntoOutput(outputPath, options.subtitlePath, options.progressStream)
     logger?.log(`字幕已烧写进: ${outputPath}`)
   }
   // #endregion
@@ -131,11 +133,15 @@ async function runMerge(
 
 // #region 烧写字幕
 // 把字幕烧写进合并结果: 先烧到 .burned 中间文件, 成功后替换合并结果, 输出文件名保持不变
-async function burnSubtitleIntoOutput(outputPath: string, subtitlePath: string): Promise<void> {
+async function burnSubtitleIntoOutput(
+  outputPath: string,
+  subtitlePath: string,
+  progressStream?: NodeJS.WriteStream,
+): Promise<void> {
   const burnedPath = buildBurnedPath(outputPath)
   try {
     // 不传 logger: "已生成"由替换完成后统一输出, 避免中间文件名误导
-    await burnSubtitle(outputPath, subtitlePath, {outputPath: burnedPath})
+    await burnSubtitle(outputPath, subtitlePath, {outputPath: burnedPath, progressStream})
   } catch (error) {
     // 烧写失败时清理半成品, 合并结果原样保留
     if (existsSync(burnedPath)) rmSync(burnedPath)

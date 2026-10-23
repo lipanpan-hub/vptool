@@ -1,9 +1,10 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import Fuse from 'fuse.js'
 import {existsSync, readdirSync, readFileSync, writeFileSync} from 'node:fs'
 import {basename, dirname, extname, join, resolve} from 'node:path'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {extractText, zipVtt} from '../../lib/vtt/zip-vtt.js'
 
 function defaultOutputPath(inputPath: string, ext: string): string {
@@ -36,7 +37,7 @@ async function pickVttFile(): Promise<string> {
   return response.file
 }
 
-export default class VttZip extends Command {
+export default class VttZip extends BaseCommand {
   static args = {
     file: Args.string({description: 'VTT 字幕文件路径(省略则从当前目录交互选择)', required: false}),
   }
@@ -55,9 +56,10 @@ export default class VttZip extends Command {
     zip: Flags.boolean({char: 'z', description: '压缩成单行字幕:去除说话人信息并完整保留单词级时间戳'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{inputPath: string; outputPath: string}> {
     const {args, flags} = await this.parse(VttZip)
 
+    if (!args.file) this.rejectInteractionInJsonMode('<file> 参数')
     const inputPath = args.file ?? (await pickVttFile())
 
     if (!existsSync(inputPath)) {
@@ -71,5 +73,7 @@ export default class VttZip extends Command {
     writeFileSync(outputPath, result, 'utf8')
 
     this.log(`已生成: ${outputPath}`)
+
+    return {inputPath, outputPath}
   }
 }

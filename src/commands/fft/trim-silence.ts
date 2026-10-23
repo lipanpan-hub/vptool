@@ -1,17 +1,18 @@
 // 这个命令的作用是切除音频中的静音片段, 只保留有人说话的片段
 // 先用 silencedetect 检测静音区间, 再把非静音的语音片段拼接成新文件
 
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {buildTrimmedPath, normalizeThreshold, trimSilence} from '../../lib/fft/trim-silence.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
 // 仅支持纯音频: 拼接时视频流无法同步裁剪, 强行处理会导致画面跳变
 const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma']
 
-export default class FftTrimSilence extends Command {
+export default class FftTrimSilence extends BaseCommand {
   static aliases = ['fft:ts']
 
   static args = {
@@ -41,10 +42,11 @@ export default class FftTrimSilence extends Command {
     }),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{audioPath: string; outputPath: null | string}> {
     const {args, flags} = await this.parse(FftTrimSilence)
 
     // #region 选择源音频
+    if (!args.audio) this.rejectInteractionInJsonMode('<audio> 参数')
     const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要处理的音频文件:'))
     if (!existsSync(audioPath)) this.error(`文件不存在: ${audioPath}`)
     // #endregion
@@ -60,6 +62,7 @@ export default class FftTrimSilence extends Command {
     // #region 输出已存在时先询问是否覆盖
     const outputPath = buildTrimmedPath(audioPath)
     if (existsSync(outputPath)) {
+      this.rejectInteractionInJsonMode(`先删除已存在的输出文件 ${outputPath}(该命令无 --force, 覆盖需交互确认)`)
       const {overwrite} = await prompts({
         message: `${outputPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -67,18 +70,20 @@ export default class FftTrimSilence extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {audioPath, outputPath: null}
       }
     }
     // #endregion
 
     // #region 执行切除
     this.log(`正在检测并切除 ${audioPath} 中的静音片段...`)
-    await trimSilence(audioPath, {
+    const trimmedPath = await trimSilence(audioPath, {
       minSilence,
       padding,
       threshold: normalizeThreshold(flags.threshold),
     }, this)
     // #endregion
+
+    return {audioPath, outputPath: trimmedPath}
   }
 }

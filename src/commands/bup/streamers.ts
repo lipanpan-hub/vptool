@@ -6,6 +6,7 @@ import {
   BILIUP_DEFAULT_PORT,
   createBiliupClient,
   formatStreamerStatus,
+  type BiliupStreamer,
 } from '../../lib/bup/biliup-client.js'
 
 export default class BupStreamers extends BaseCommand {
@@ -19,22 +20,17 @@ export default class BupStreamers extends BaseCommand {
   static flags = {
     port: Flags.integer({description: 'biliup 服务端口', default: BILIUP_DEFAULT_PORT}),
     bind: Flags.string({description: 'biliup 服务绑定地址', default: BILIUP_DEFAULT_BIND}),
-    json: Flags.boolean({description: '以 JSON 输出原始数据'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<BiliupStreamer[]> {
     const {flags} = await this.parse(BupStreamers)
     const client = createBiliupClient(flags.port, flags.bind)
 
     const streamers = await client.listStreamers()
-    if (flags.json) {
-      this.log(JSON.stringify(streamers, null, 2))
-      return
-    }
 
     if (streamers.length === 0) {
       this.log('暂无监控主播, 可执行: vp bup add <直播间地址> --remark <备注名>')
-      return
+      return streamers
     }
 
     this.log(`共 ${streamers.length} 个监控主播:\n`)
@@ -50,5 +46,6 @@ export default class BupStreamers extends BaseCommand {
       }
       this.log('')
     }
+    return streamers
   }
 }

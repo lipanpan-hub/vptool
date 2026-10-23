@@ -14,7 +14,34 @@ description: "调用 vp（@lppx/vptool）命令行完成视频下载、抖音视
 - 涉及下载或 ffmpeg 的命令，先跑 `vp dl check`；缺二进制时跑 `vp dl check --update` 自动安装 yt-dlp 与 ffmpeg。
 - `vp config show` 查看当前配置：`documentsPath`（所有下载的根目录）、`dlPrefix`、`TIKHUB_IO_TOKEN` 是否已填。
 
+## JSON 模式（推荐 Agent 使用）
+
+所有命令都支持 `--json`。开启后 stdout 只有一个 JSON 对象，不再有人话日志，也不会打印开头的配置文件路径那一行，可以直接 `ConvertFrom-Json` / `JSON.parse`。
+
+成功：退出码 0。
+
+```json
+{"ok": true, "command": "dl:check", "data": {...}}
+```
+
+失败：退出码非 0，错误也写在 stdout。
+
+```json
+{"ok": false, "command": "bup:status", "error": {"message": "...", "exitCode": 1}}
+```
+
+- `data` 的结构因命令而异，字段是产物路径、解析结果、列表等（例如 `vtt zip` 返回 `{inputPath, outputPath}`，`fft probe` 返回 ffprobe 的 `{format, streams}`，`dl vmeta` 返回标题、时长、格式列表）。
+- `--json` 下命令不会弹交互。缺少必要参数时直接返回 `ok:false`，message 里写明要补哪个参数，按提示补齐后重跑即可。这样就不用担心进程卡在等待输入。
+- 下面几个命令必须交互，`--json` 下会直接报错：`dl` / `dl video`、`douyin fetch-one-video`（保存目录 prefix）、`fft video-split-copy`（起止时间）、`fft reencode-audio`（目标格式）、`dl cd`、`config edit`。
+- `config show --json` 返回的 `content` 里 `TIKHUB_IO_TOKEN` 已脱敏成 `***`。
+- 目标文件已存在时（`fft add-audio` / `extract-audio` / `trim-silence`），`--json` 下不会询问覆盖，直接报错，需先删除已存在的文件。
+- `bup upload --json` 不提问，未传的 `tid`/`copyright`/`limit` 分别取 171 / 1 / 3，转载（`copyright=2`）必须带 `--source`。
+- 子进程或下载进度条的输出会改写到 stderr，不影响 stdout 的 JSON。
+- 写错命令名时 oclif 会出 "Did you mean" 提示，那不是 JSON，退出码 127。
+
 ## 交互式提示与规避方法
+
+（不用 `--json` 时才需要看这一节。）
 
 Agent 的终端不是 TTY，交互提示无法可靠应答。已验证：在 pwsh 里用管道给 prompts 喂输入，会带上 BOM 字符、第二个提示会挂起，所以不要用 `"..." | vp ...` 的方式应答。
 

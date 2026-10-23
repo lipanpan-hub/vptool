@@ -1,16 +1,17 @@
 // 这个命令的作用是把音频重新编码为目标格式
 // 扫描当前目录让用户交互式选择音频, 再交互式选择目标格式后重新编码
 
-import {Args, Command} from '@oclif/core'
+import {Args} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {AUDIO_TARGET_FORMATS, buildReencodedPath, reencodeAudio} from '../../lib/fft/reencode-audio.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
 const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma']
 
-export default class FftReencodeAudio extends Command {
+export default class FftReencodeAudio extends BaseCommand {
   static aliases = ['fft:ra']
 
   static args = {
@@ -24,8 +25,11 @@ export default class FftReencodeAudio extends Command {
     '<%= config.bin %> <%= command.id %>',
   ]
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{audioPath: string; outputPath: null | string}> {
     const {args} = await this.parse(FftReencodeAudio)
+
+    // 目标格式只能交互选择, 没有对应参数可规避
+    this.rejectInteractiveOnlyInJsonMode('目标格式只能交互选择')
 
     // #region 选择源音频
     const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要重新编码的音频文件:'))
@@ -45,7 +49,7 @@ export default class FftReencodeAudio extends Command {
     })
     if (!target) {
       this.log('已取消')
-      return
+      return {audioPath, outputPath: null}
     }
     // #endregion
 
@@ -59,14 +63,16 @@ export default class FftReencodeAudio extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {audioPath, outputPath: null}
       }
     }
     // #endregion
 
     // #region 执行重新编码
     this.log(`正在把 ${audioPath} 重新编码为 ${target.label}...`)
-    await reencodeAudio(audioPath, target, this)
+    const reencodedPath = await reencodeAudio(audioPath, target, this)
     // #endregion
+
+    return {audioPath, outputPath: reencodedPath}
   }
 }

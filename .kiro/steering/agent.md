@@ -11,7 +11,7 @@
 - 临时验证脚本(如 testmp/ 下的)和测试产生的下载/输出文件，任务结束后都要清理，不能只发删除命令就认为完成。
 - 清理后必须用 list_directory 递归核实，不能只按单一扩展名删(如只删 *.srt 会漏掉 bug 误建的同名目录)。
 - 删除文件优先用 delete_file 工具；删目录用 Remove-Item -LiteralPath ... -Recurse，并再次列目录确认。
-
+- 并行派子 Agent 改代码时，不要让它们共用 testmp 目录，也别让它们清理该目录（曾因 `Remove-Item` 误删整个目录）；临时文件由主 Agent 统一清理。
 
 
 ## semanticRename 之后必须手动验证覆盖范围
@@ -34,6 +34,12 @@
 
 - README/docs 可能落后于代码（如 README 未列出 `fft probe/trim-silence/video-split-copy`），flag 默认值、产物路径、是否弹交互都要读 `src/commands` 与 `src/lib` 确认。
 - 重点标出哪些命令会触发交互提示、用什么参数跳过、哪些无法跳过必须交给用户执行；Agent 终端不是 TTY，不能靠管道应答提示。
+
+## 本项目实测 CLI 的方法
+
+- `node bin/dev.js ...` 直接运行会报 `Cannot find module '...base-command.js'` 或 "Did you mean ..." 找不到命令，因为 shebang 里的 `--loader ts-node/esm` 在 `node bin/dev.js` 下不生效。要实测先 `npm run build`，再用 `node bin/run.js <命令> --json`。
+- 实测 JSON 模式用 `testmp/json-smoke.ps1 -Cases 'dl check --json','vtt zip x.vtt --json'`（逐个用例输出退出码、stdout 是否合法 JSON、前 400 字符），stderr 被丢弃，stdout 必须是纯 JSON。
+- 新增/改命令后要同步改 `skills/vp-skill/SKILL.md`。所有命令统一继承 `BaseCommand`，`run()` 必须返回对象；交互点先调 `rejectInteractionInJsonMode(hint)`，必须交互的命令调 `rejectInteractiveOnlyInJsonMode(reason)`。
 
 ## 解析第三方库输出前先实测一次
 

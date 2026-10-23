@@ -1,7 +1,8 @@
-import {Args, Command} from '@oclif/core'
+import {Args} from '@oclif/core'
 import {existsSync} from 'node:fs'
 
-import {probeMedia} from '../../lib/fft/probe.js'
+import {BaseCommand} from '../../lib/base-command.js'
+import {type FfprobeResult, probeMedia} from '../../lib/fft/probe.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
 // 常见音视频扩展名, 交互选择时据此过滤当前目录文件
@@ -10,7 +11,7 @@ const MEDIA_EXTENSIONS = [
   '.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma',
 ]
 
-export default class FftProbe extends Command {
+export default class FftProbe extends BaseCommand {
   static aliases = ['fft:pb']
 
   static args = {
@@ -24,13 +25,15 @@ export default class FftProbe extends Command {
     '<%= config.bin %> <%= command.id %>',
   ]
 
-  public async run(): Promise<void> {
+  // --json 模式下 data 即 ffprobe 原始解析结果 {format, streams}
+  public async run(): Promise<FfprobeResult> {
     const {args} = await this.parse(FftProbe)
 
+    if (!args.media) this.rejectInteractionInJsonMode('<media> 参数')
     const mediaPath = args.media ?? (await selectFile(MEDIA_EXTENSIONS, '请选择要查看的音视频文件:'))
 
     if (!existsSync(mediaPath)) this.error(`文件不存在: ${mediaPath}`)
 
-    await probeMedia(mediaPath, this)
+    return probeMedia(mediaPath, this)
   }
 }

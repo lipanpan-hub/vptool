@@ -8,12 +8,14 @@
 // 然后保存文章 成为 txt文件 文件名字是 data.create_time 中的日期 加上  data.title 
 // 文章内容是  data.content_text 
 
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 
-import {DownloadArticleWorkflow} from '../../../lib/wechat/mp/download-article-workflow.js'
+import {BaseCommand} from '../../../lib/base-command.js'
+import {ToolConfigManager} from '../../../lib/config/index.js'
+import {type DownloadArticleResult, DownloadArticleWorkflow} from '../../../lib/wechat/mp/download-article-workflow.js'
 import {providers} from '../../../lib/wechat/mp/tikhub-providers.js'
 
-export default class WechatMpDl extends Command {
+export default class WechatMpDl extends BaseCommand {
   static aliases = ['wx:mp:dl','mp:dl']
   static args = {
     url: Args.string({description: '微信公众号文章链接', required: true}),
@@ -35,8 +37,18 @@ export default class WechatMpDl extends Command {
     }),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<DownloadArticleResult> {
     const {args, flags} = await this.parse(WechatMpDl)
+
+    // #region JSON 模式下拒绝可能弹出的交互: 缺 token 的输入提示、多接口时的选择菜单
+    if (!ToolConfigManager.fromConfigDir(this.config.configDir).getTikhubToken()) {
+      this.rejectInteractionInJsonMode('先在配置文件中设置 TIKHUB_IO_TOKEN (vp config edit)')
+    }
+
+    if (!flags.provider) {
+      this.rejectInteractionInJsonMode('--provider <接口id>')
+    }
+    // #endregion
 
     try {
       // 命令层只负责组装参数并委托给门面, 具体编排见 DownloadArticleWorkflow
@@ -46,7 +58,7 @@ export default class WechatMpDl extends Command {
         this.config.configDir,
         this,
       )
-      await workflow.execute()
+      return await workflow.execute()
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
     }

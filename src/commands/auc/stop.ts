@@ -16,7 +16,7 @@ export default class AucStop extends BaseCommand {
     port: Flags.integer({description: '服务监听端口(需与启动时一致)', default: 8080}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{isStopped: boolean; port: number; processId?: number; processName?: string}> {
     const {flags} = await this.parse(AucStop)
 
     // 停止逻辑依赖 Windows 的 Get-NetTCPConnection 定位进程, 其他平台直接提示
@@ -34,9 +34,10 @@ export default class AucStop extends BaseCommand {
 
     if (stopResult.kind === 'not-running') {
       this.log(`服务未在运行: ${manager.baseUrl}`)
-      return
+      return {isStopped: false, port: flags.port}
     }
 
     this.log(`服务已关闭: ${stopResult.processName} (pid=${stopResult.processId}, port=${flags.port})`)
+    return {isStopped: true, port: flags.port, processId: stopResult.processId, processName: stopResult.processName}
   }
 }

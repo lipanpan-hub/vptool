@@ -52,7 +52,8 @@ export class ToolConfigManager extends ConfigManager<Profile> {
     if (!existsSync(vptoolPath)) {
       try {
         mkdirSync(vptoolPath, {recursive: true})
-        process.stdout.write(`已创建配置目录: ${vptoolPath}\n`)
+        // 走 stderr: --json 模式下 stdout 只留给结果 JSON
+        process.stderr.write(`已创建配置目录: ${vptoolPath}\n`)
       } catch (error) {
         process.stderr.write(`创建配置目录失败: ${error}\n`)
       }

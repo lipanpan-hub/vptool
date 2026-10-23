@@ -1,11 +1,12 @@
-import {Args, Command} from '@oclif/core'
+import {Args} from '@oclif/core'
 import {existsSync} from 'node:fs'
 import prompts from 'prompts'
 
+import {BaseCommand} from '../../lib/base-command.js'
 import {extractAudioCopy} from '../../lib/fft/extract-audio-copy.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
-export default class FftExtractAudio extends Command {
+export default class FftExtractAudio extends BaseCommand {
   static aliases = ['fft:ea']
 
   static args = {
@@ -19,9 +20,10 @@ export default class FftExtractAudio extends Command {
     '<%= config.bin %> <%= command.id %>',
   ]
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{outputPath: null | string; videoPath: string}> {
     const {args} = await this.parse(FftExtractAudio)
 
+    if (!args.video) this.rejectInteractionInJsonMode('<video> 参数')
     const videoPath = args.video ?? (await selectFile(['.mp4'], '请选择源 mp4 文件:'))
 
     if (!existsSync(videoPath)) this.error(`文件不存在: ${videoPath}`)
@@ -29,6 +31,7 @@ export default class FftExtractAudio extends Command {
     // 输出已存在时先询问是否覆盖, 避免误删旧文件
     const audioPath = videoPath.replace(/\.[^.]+$/, '.m4a')
     if (existsSync(audioPath)) {
+      this.rejectInteractionInJsonMode(`先删除已存在的输出文件 ${audioPath}(该命令无 --force, 覆盖需交互确认)`)
       const {overwrite} = await prompts({
         message: `${audioPath} 已存在, 是否覆盖?`,
         name: 'overwrite',
@@ -36,10 +39,11 @@ export default class FftExtractAudio extends Command {
       })
       if (!overwrite) {
         this.log('已取消')
-        return
+        return {outputPath: null, videoPath}
       }
     }
 
-    await extractAudioCopy(videoPath, this)
+    const outputPath = await extractAudioCopy(videoPath, this)
+    return {outputPath, videoPath}
   }
 }

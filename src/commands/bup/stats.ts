@@ -5,6 +5,7 @@ import {
   BILIUP_DEFAULT_BIND,
   BILIUP_DEFAULT_PORT,
   createBiliupClient,
+  type BiliupSystemStats,
 } from '../../lib/bup/biliup-client.js'
 import {formatSize} from '../../lib/dl/list-files.js'
 
@@ -19,18 +20,13 @@ export default class BupStats extends BaseCommand {
   static flags = {
     port: Flags.integer({description: 'biliup 服务端口', default: BILIUP_DEFAULT_PORT}),
     bind: Flags.string({description: 'biliup 服务绑定地址', default: BILIUP_DEFAULT_BIND}),
-    json: Flags.boolean({description: '以 JSON 输出原始数据'}),
   }
 
-  public async run(): Promise<void> {
+  public async run(): Promise<BiliupSystemStats> {
     const {flags} = await this.parse(BupStats)
     const client = createBiliupClient(flags.port, flags.bind)
 
     const stats = await client.getSystemStats()
-    if (flags.json) {
-      this.log(JSON.stringify(stats, null, 2))
-      return
-    }
 
     // #region 人话摘要输出
     const memoryUsedPercent = ((stats.memory.used / stats.memory.total) * 100).toFixed(1)
@@ -46,5 +42,7 @@ export default class BupStats extends BaseCommand {
     }
     this.log(`网卡: ${stats.interfaces.join(', ')}`)
     // #endregion
+
+    return stats
   }
 }

@@ -10,6 +10,12 @@ interface Logger {
   log: (message: string) => void
 }
 
+export interface DownloadArticleResult {
+  filePath: string
+  nickName: string
+  title: string
+}
+
 export interface DownloadArticleOptions {
   output?: string
   provider?: string
@@ -25,7 +31,7 @@ export class DownloadArticleWorkflow {
     private readonly logger: Logger,
   ) {}
 
-  async execute(): Promise<void> {
+  async execute(): Promise<DownloadArticleResult> {
     const token = await ensureTikhubToken(this.configDir)
     const provider = await this.chooseProvider()
 
@@ -36,6 +42,7 @@ export class DownloadArticleWorkflow {
     const documentsPath = this.options.output || ToolConfigManager.fromConfigDir(this.configDir).getDocumentsPath()
     const filePath = saveArticle(article, documentsPath)
     this.logger.log(`✅ 文章已保存: ${filePath}`)
+    return {filePath, nickName: article.nickName, title: article.title}
   }
 
   private async chooseProvider(): Promise<WechatArticleProvider> {

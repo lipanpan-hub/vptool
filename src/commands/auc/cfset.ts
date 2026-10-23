@@ -14,7 +14,7 @@ export default class AucCfset extends BaseCommand {
 
   static examples = ['<%= config.bin %> <%= command.id %> E:/tools/audiocpp']
 
-  public async run(): Promise<void> {
+  public async run(): Promise<{audioCppDir: string; configPath: string}> {
     const {args} = await this.parse(AucCfset)
     // 统一转绝对路径, 避免相对路径在不同工作目录下语义漂移
     const audioCppDir = resolve(args.dir)
@@ -30,5 +30,7 @@ export default class AucCfset extends BaseCommand {
     configManager.setAudioCppDir(audioCppDir)
     this.log(`已将 audiocpp 目录写入配置: ${audioCppDir}`)
     this.log(`配置文件: ${configManager.getConfigPath()}`)
+
+    return {audioCppDir, configPath: configManager.getConfigPath()}
   }
 }
