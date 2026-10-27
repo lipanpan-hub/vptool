@@ -3,7 +3,7 @@ import {existsSync, renameSync, rmSync} from 'node:fs'
 import {extname} from 'node:path'
 import {helpers} from 'ytdlp-nodejs'
 
-import {burnSubtitle, buildBurnedPath} from './burn-subtitle.js'
+import {burnSubtitle, buildBurnedPath, SubtitleInput, SubtitleStyle} from './burn-subtitle.js'
 import {readAudioCodec} from './probe.js'
 
 // #region 路径计算
@@ -18,12 +18,36 @@ export function buildOriginalPath(videoPath: string): string {
 }
 // #endregion
 
+// #region 中英字幕样式
+// ffmpeg 的 subtitles 滤镜把 vtt 转成 PlayResY=288 的 ass, FontSize/MarginV 都是相对该基准的值, libass 渲染时按视频实际高度等比缩放
+// (默认字号 16): 中文适度加大保持主体地位, 英文缩小仅作对照
+const ZH_SUBTITLE_FONT_SIZE = 12
+const EN_SUBTITLE_FONT_SIZE = 8
+// 英文对照字幕半透明显示, 降低对画面的干扰
+const EN_SUBTITLE_OPACITY = 0.3
+// 中文字幕底部距画面底边的距离: 抬高到英文字幕上方, 与英文错开不重叠
+const ZH_SUBTITLE_MARGIN_V = 15
+
+// 中文字幕: 底部居中(默认对齐 2), 大字号, 抬高到英文上方
+const ZH_SUBTITLE_STYLE: SubtitleStyle = {fontSize: ZH_SUBTITLE_FONT_SIZE, marginV: ZH_SUBTITLE_MARGIN_V}
+
+// 英文字幕: 底部居中常规位置(默认对齐与边距), 小字号半透明, 仅为中文观众提供对照
+const EN_SUBTITLE_STYLE: SubtitleStyle = {
+  fontColor: '#FFFFFF',
+  fontOpacity: EN_SUBTITLE_OPACITY,
+  fontSize: EN_SUBTITLE_FONT_SIZE,
+  outlineColor: '#000000',
+}
+// #endregion
+
 // #region 类型定义
 export interface AddAudioOptions {
   // 烧写字幕时进度行写入的流, 默认 stdout; --json 模式下传 stderr
   progressStream?: NodeJS.WriteStream
-  // 要烧写进合并结果的 vtt 字幕文件; 提供时合并后重编码烧写, 再用烧写结果替换合并结果
-  subtitlePath?: string
+  // 要烧写的中文字幕: 底部居中且抬高到英文上方, 大字号
+  subtitleZhPath?: string
+  // 要烧写的英文字幕: 底部常规位置, 小字号半透明, 仅作对照
+  subtitleEnPath?: string
 }
 // #endregion
 
@@ -31,7 +55,7 @@ export interface AddAudioOptions {
 // 源名不带 .old. 时: 先把源视频改名为 .old 备份, 合并结果占用原文件名
 // 源名带 .old. 时: 视源视频为备份文件, 不再改名, 合并结果直接占用去 old 后的名字
 // 原声轨原样保留, 全部 copy 不重编码, 新音轨排在首位并设为默认
-// 传入 subtitlePath 时合并后把字幕烧写进合并结果(视频重编码)
+// 传入 subtitleZhPath/subtitleEnPath 时合并后按各自样式烧写(视频重编码), 两者都缺省则不烧写
 export async function addAudioToVideo(
   videoPath: string,
   audioPath: string,
@@ -64,8 +88,8 @@ export async function addAudioToVideo(
   // #endregion
 
   // #region 按需把字幕烧写进合并结果
-  if (options.subtitlePath) {
-    await burnSubtitleIntoOutput(outputPath, options.subtitlePath, options.progressStream)
+  if (options.subtitleZhPath || options.subtitleEnPath) {
+    await burnSubtitleIntoOutput(outputPath, options.subtitleZhPath, options.subtitleEnPath, options.progressStream)
     logger?.log(`字幕已烧写进: ${outputPath}`)
   }
   // #endregion
@@ -132,16 +156,23 @@ async function runMerge(
 // #endregion
 
 // #region 烧写字幕
-// 把字幕烧写进合并结果: 先烧到 .burned 中间文件, 成功后替换合并结果, 输出文件名保持不变
+// 把中英字幕按各自样式烧写进合并结果: 先烧到 .burned 中间文件, 成功后替换合并结果, 输出文件名保持不变
+// 至少传入一条字幕; 只传其一时另一路按缺省跳过
 async function burnSubtitleIntoOutput(
   outputPath: string,
-  subtitlePath: string,
+  subtitleZhPath: string | undefined,
+  subtitleEnPath: string | undefined,
   progressStream?: NodeJS.WriteStream,
 ): Promise<void> {
   const burnedPath = buildBurnedPath(outputPath)
+  // 中英文字幕同在底部区域, 中文靠 MarginV 抬高到英文上方; 先烧中文再烧英文, 叠放次序不影响可读性
+  const subtitleInputs: SubtitleInput[] = []
+  if (subtitleZhPath) subtitleInputs.push({path: subtitleZhPath, style: ZH_SUBTITLE_STYLE})
+  if (subtitleEnPath) subtitleInputs.push({path: subtitleEnPath, style: EN_SUBTITLE_STYLE})
+
   try {
     // 不传 logger: "已生成"由替换完成后统一输出, 避免中间文件名误导
-    await burnSubtitle(outputPath, subtitlePath, {outputPath: burnedPath, progressStream})
+    await burnSubtitle(outputPath, subtitleInputs, {outputPath: burnedPath, progressStream})
   } catch (error) {
     // 烧写失败时清理半成品, 合并结果原样保留
     if (existsSync(burnedPath)) rmSync(burnedPath)

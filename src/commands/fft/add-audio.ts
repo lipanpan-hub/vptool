@@ -1,22 +1,28 @@
 // 这个命令的作用是把一个音频文件作为新音轨合并进视频
 // 交互式选择视频与音频; 原声轨保留不动, 全程 copy 不重编码
 // 新音轨通过 -map 顺序排到最前, 并被设置为默认声轨
+// 音频与字幕的交互选择范围: 当前目录 + 当前目录下的 .ytbflow 目录
 // 源名不带 .old. 时先改名为 xxx.old.xxx 备份, 合并结果占用原文件名
 // 源名带 .old. 时视为备份文件, 不再改名备份, 合并结果直接占用去 old 后的名字
-// 可选把 vtt 字幕烧写进合并结果(此时视频重编码): 用 --subtitle 传入, 或交互确认后选择
+// 可选烧写中英双字幕(此时视频重编码): 同在底部区域, 中文在上大字号, 英文在下小字号半透明仅作对照
+// 用 --subtitle-zh/--subtitle-en 传入, 或交互确认后分别选择; 两路都未选则不烧写
 
 import {Args, Flags} from '@oclif/core'
 import {existsSync, unlinkSync} from 'node:fs'
+import {join} from 'node:path'
 import prompts from 'prompts'
 
 import {BaseCommand} from '../../lib/base-command.js'
 import {addAudioToVideo, buildBackupPath, buildOriginalPath} from '../../lib/fft/add-audio.js'
-import {selectFile} from '../../lib/vtt/select-file.js'
+import {selectFile, selectFileFromDirs, selectOptionalFileFromDirs, type FileScanDir} from '../../lib/vtt/select-file.js'
 
 // 仅扫描这些扩展名用于交互式选择
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.mov', '.avi', '.flv', '.webm', '.ts', '.m4v']
 const AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus', '.wma']
 const SUBTITLE_EXTENSIONS = ['.vtt']
+
+// 音频与字幕的额外扫描目录名(相对当前目录)
+const EXTRA_SCAN_DIR_NAME = '.ytbflow'
 
 export default class FftAddAudio extends BaseCommand {
   static aliases = ['fft:aa']
@@ -26,18 +32,19 @@ export default class FftAddAudio extends BaseCommand {
     audio: Args.string({description: '要加入的音轨文件(省略则扫描当前目录交互选择)'}),
   }
 
-  static description = '把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选把 vtt 字幕烧写进结果'
+  static description = '把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选烧写中英双字幕(同在底部区域, 中文在上大字号, 英文在下小字号半透明)'
 
   static examples = [
     '<%= config.bin %> <%= command.id %> input.mp4 bgm.mp3',
-    '<%= config.bin %> <%= command.id %> input.mp4 bgm.mp3 --subtitle sub.vtt',
+    '<%= config.bin %> <%= command.id %> input.mp4 bgm.mp3 --subtitle-zh zh.vtt --subtitle-en en.vtt',
     '<%= config.bin %> <%= command.id %> input.mp4 bgm.mp3 --delete-audio',
     '<%= config.bin %> <%= command.id %>',
   ]
 
   static flags = {
     'delete-audio': Flags.boolean({char: 'd', description: '合并成功后删除源音频文件(默认保留)'}),
-    subtitle: Flags.string({char: 's', description: '要烧写进合并结果的 vtt 字幕文件(省略则交互询问是否烧写)'}),
+    'subtitle-en': Flags.string({description: '要烧写的英文 vtt 字幕文件(底部小字号半透明, 仅作对照; 省略则交互询问)'}),
+    'subtitle-zh': Flags.string({description: '要烧写的中文 vtt 字幕文件(底部居中抬高到英文上方, 大字号; 省略则交互询问)'}),
   }
 
   public async run(): Promise<{
@@ -45,7 +52,8 @@ export default class FftAddAudio extends BaseCommand {
     backupPath: null | string
     isAudioDeleted: boolean
     outputPath: null | string
-    subtitlePath: null | string
+    subtitleEnPath: null | string
+    subtitleZhPath: null | string
     videoPath: string
   }> {
     const {args, flags} = await this.parse(FftAddAudio)
@@ -56,24 +64,21 @@ export default class FftAddAudio extends BaseCommand {
     if (!existsSync(videoPath)) this.error(`文件不存在: ${videoPath}`)
     // #endregion
 
+    // #region 音频与字幕的扫描范围: 当前目录 + .ytbflow 目录
+    const scanDirs: readonly FileScanDir[] = [
+      {label: '当前目录', path: process.cwd()},
+      {label: EXTRA_SCAN_DIR_NAME, path: join(process.cwd(), EXTRA_SCAN_DIR_NAME)},
+    ]
+    // #endregion
+
     // #region 选择要合并的音轨
     if (!args.audio) this.rejectInteractionInJsonMode('<audio> 参数')
-    const audioPath = args.audio ?? (await selectFile(AUDIO_EXTENSIONS, '请选择要加入的音轨文件:'))
+    const audioPath = args.audio ?? (await selectFileFromDirs(scanDirs, AUDIO_EXTENSIONS, '请选择要加入的音轨文件:'))
     if (!existsSync(audioPath)) this.error(`文件不存在: ${audioPath}`)
     // #endregion
 
-    // #region 确定要烧写进结果的字幕
-    // 未用 --subtitle 传入时交互询问是否烧写, 确认需要时再选字幕文件; JSON 模式不询问, 视为不烧写
-    let subtitlePath = flags.subtitle
-    if (!subtitlePath && !this.jsonEnabled()) {
-      const {isBurnNeeded} = await prompts({
-        message: '是否需要把字幕烧写进合并后的视频?',
-        name: 'isBurnNeeded',
-        type: 'confirm',
-      })
-      if (isBurnNeeded) subtitlePath = await selectFile(SUBTITLE_EXTENSIONS, '请选择要烧写的 vtt 字幕文件:')
-    }
-    if (subtitlePath && !existsSync(subtitlePath)) this.error(`文件不存在: ${subtitlePath}`)
+    // #region 确定要烧写的中英字幕
+    const {subtitleEnPath, subtitleZhPath} = await this.resolveSubtitlePaths(flags, scanDirs)
     // #endregion
 
     // #region 计算输出路径与会被覆盖的文件
@@ -98,7 +103,8 @@ export default class FftAddAudio extends BaseCommand {
           backupPath: null,
           isAudioDeleted: false,
           outputPath: null,
-          subtitlePath: subtitlePath ?? null,
+          subtitleEnPath: subtitleEnPath ?? null,
+          subtitleZhPath: subtitleZhPath ?? null,
           videoPath,
         }
       }
@@ -109,7 +115,11 @@ export default class FftAddAudio extends BaseCommand {
     this.log(`正在把 ${audioPath} 合并进 ${videoPath}...`)
     // JSON 模式下烧写进度行改写到 stderr, 保证 stdout 只有结果 JSON
     const progressStream = this.jsonEnabled() ? process.stderr : process.stdout
-    await addAudioToVideo(videoPath, audioPath, {progressStream, subtitlePath}, this)
+    await addAudioToVideo(videoPath, audioPath, {
+      progressStream,
+      subtitleEnPath: subtitleEnPath ?? undefined,
+      subtitleZhPath: subtitleZhPath ?? undefined,
+    }, this)
     // #endregion
 
     // #region 按需删除源音频
@@ -124,8 +134,37 @@ export default class FftAddAudio extends BaseCommand {
       backupPath: isBackupMode ? conflictPath : null,
       isAudioDeleted: flags['delete-audio'],
       outputPath,
-      subtitlePath: subtitlePath ?? null,
+      subtitleEnPath: subtitleEnPath ?? null,
+      subtitleZhPath: subtitleZhPath ?? null,
       videoPath,
     }
+  }
+
+  // 确定要烧写的中英字幕: --subtitle-zh/--subtitle-en 优先; 交互模式下未传的各询问一次(均可跳过); JSON 模式不询问
+  private async resolveSubtitlePaths(
+    flags: {'subtitle-en'?: string; 'subtitle-zh'?: string},
+    scanDirs: readonly FileScanDir[],
+  ): Promise<{subtitleEnPath?: string; subtitleZhPath?: string}> {
+    // #region 中文字幕
+    let subtitleZhPath = flags['subtitle-zh']
+    if (!subtitleZhPath && !this.jsonEnabled()) {
+      subtitleZhPath = await selectOptionalFileFromDirs(scanDirs, SUBTITLE_EXTENSIONS, '请选择要烧写的中文字幕文件(回车选首项即跳过):')
+    }
+    // #endregion
+
+    // #region 英文字幕
+    let subtitleEnPath = flags['subtitle-en']
+    if (!subtitleEnPath && !this.jsonEnabled()) {
+      subtitleEnPath = await selectOptionalFileFromDirs(scanDirs, SUBTITLE_EXTENSIONS, '请选择要烧写的英文字幕文件(回车选首项即跳过):')
+    }
+    // #endregion
+
+    // #region 校验字幕文件存在
+    for (const subtitlePath of [subtitleZhPath, subtitleEnPath]) {
+      if (subtitlePath && !existsSync(subtitlePath)) this.error(`文件不存在: ${subtitlePath}`)
+    }
+    // #endregion
+
+    return {subtitleEnPath, subtitleZhPath}
   }
 }

@@ -27,6 +27,25 @@ export async function selectOptionalFile(extensions: string[], message: string):
   return selected === '' ? undefined : selected
 }
 
+/** 必选: 扫描多个目录合并候选并标注来源, 无候选或未选中时报错 */
+export async function selectFileFromDirs(
+  scanDirs: readonly FileScanDir[],
+  extensions: string[],
+  message: string,
+): Promise<string> {
+  const fileChoices = listChoicesFromDirs(scanDirs, extensions)
+  if (fileChoices.length === 0) {
+    const dirPaths = scanDirs.map((scanDir) => scanDir.path).join(', ')
+    throw new Error(`以下目录均未找到 ${extensions.join('/')} 文件: ${dirPaths}`)
+  }
+
+  const selected = await promptFileChoice(fileChoices, message)
+  if (selected === undefined) {
+    throw new Error('未选择文件')
+  }
+  return selected
+}
+
 /** 可跳过: 扫描多个目录合并候选并标注来源; 所有目录都没扫到候选时直接返回 undefined(不弹菜单, 调用方按跳过处理) */
 export async function selectOptionalFileFromDirs(
   scanDirs: readonly FileScanDir[],

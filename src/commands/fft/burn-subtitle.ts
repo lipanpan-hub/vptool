@@ -115,7 +115,7 @@ export default class FftBurnSubtitle extends BaseCommand {
     this.log(`正在把 ${subtitlePath} 烧写进 ${videoPath}...`)
     // JSON 模式下进度行改写到 stderr, 保证 stdout 只有结果 JSON
     const progressStream = this.jsonEnabled() ? process.stderr : process.stdout
-    await burnSubtitle(videoPath, subtitlePath, {crf: flags.crf, outputPath, progressStream, style}, this)
+    await burnSubtitle(videoPath, [{path: subtitlePath, style}], {crf: flags.crf, outputPath, progressStream}, this)
     // #endregion
 
     return {outputPath, subtitlePath, videoPath}

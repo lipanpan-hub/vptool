@@ -19,10 +19,18 @@ export interface SubtitleStyle {
   fontColor?: string
   fontName?: string
   fontSize?: number
+  // 字幕不透明度(0-1, 缺省 1 不透明), 同时作用于填充色与描边色的透明通道
+  fontOpacity?: number
   // 字幕距画面边缘的垂直像素
   marginV?: number
   // #RRGGBB
   outlineColor?: string
+}
+
+// 一条待烧写的字幕: path 为字幕文件, style 为该条字幕独立样式(多字幕可分别指定位置与字号)
+export interface SubtitleInput {
+  path: string
+  style?: SubtitleStyle
 }
 
 export interface BurnSubtitleOptions {
@@ -30,7 +38,6 @@ export interface BurnSubtitleOptions {
   outputPath?: string
   // 进度行写入的流, 默认 stdout; --json 模式下传 stderr 以保证 stdout 只有结果 JSON
   progressStream?: NodeJS.WriteStream
-  style?: SubtitleStyle
 }
 // #endregion
 
@@ -50,25 +57,32 @@ export function isValidAlignment(alignment: number): boolean {
 // #endregion
 
 // #region 滤镜构造(纯函数)
-// #RRGGBB -> ASS 的 &HAABBGGRR; AA 固定为 00 表示完全不透明
-function toAssColor(color: string): string {
+// 不透明度(0-1)转 ASS Alpha 通道: 00 为完全不透明, FF 为完全透明
+function toAssAlpha(fontOpacity: number): string {
+  const alpha = Math.round((1 - fontOpacity) * 255)
+  return alpha.toString(16).padStart(2, '0').toUpperCase()
+}
+
+// #RRGGBB + 不透明度 -> ASS 的 &HAABBGGRR
+function toAssColor(color: string, fontOpacity: number): string {
   const digits = color.trim().replace(/^#/, '')
   const red = digits.slice(0, 2)
   const green = digits.slice(2, 4)
   const blue = digits.slice(4, 6)
 
-  // ASS 颜色分量顺序是 BGR, 与 CSS 的 RGB 相反
-  return `&H00${blue}${green}${red}`.toUpperCase()
+  // ASS 颜色分量顺序是透明通道 + BGR, 与 CSS 的 RGB 相反
+  return `&H${toAssAlpha(fontOpacity)}${blue}${green}${red}`.toUpperCase()
 }
 
 // 把样式映射为 subtitles 滤镜的 force_style 串, 无有效字段时返回空串
 export function buildForceStyle(style: SubtitleStyle): string {
   const fields: string[] = []
+  const fontOpacity = style.fontOpacity ?? 1
 
   if (style.fontName) fields.push(`FontName=${style.fontName}`)
   if (style.fontSize !== undefined) fields.push(`FontSize=${style.fontSize}`)
-  if (style.fontColor) fields.push(`PrimaryColour=${toAssColor(style.fontColor)}`)
-  if (style.outlineColor) fields.push(`OutlineColour=${toAssColor(style.outlineColor)}`)
+  if (style.fontColor) fields.push(`PrimaryColour=${toAssColor(style.fontColor, fontOpacity)}`)
+  if (style.outlineColor) fields.push(`OutlineColour=${toAssColor(style.outlineColor, fontOpacity)}`)
   if (style.alignment !== undefined) fields.push(`Alignment=${style.alignment}`)
   if (style.marginV !== undefined) fields.push(`MarginV=${style.marginV}`)
 
@@ -268,9 +282,10 @@ async function readTotalSecondsSafely(videoPath: string): Promise<number> {
 
 // #region 烧写
 // 把字幕像素合成进画面: 视频流必须重编码, 音频流按容器约束决定复制或重编码
+// subtitles 数组中每条字幕独立样式, 按顺序生成 subtitles 滤镜串联(可各自指定位置/字号/透明度)
 export async function burnSubtitle(
   videoPath: string,
-  subtitlePath: string,
+  subtitles: readonly SubtitleInput[],
   options: BurnSubtitleOptions = {},
   logger?: {log: (message: string) => void},
 ): Promise<string> {
@@ -280,7 +295,7 @@ export async function burnSubtitle(
   }
 
   const outputPath = options.outputPath ?? buildBurnedPath(videoPath)
-  const filter = buildSubtitleFilter(subtitlePath, options.style)
+  const filter = subtitles.map((subtitle) => buildSubtitleFilter(subtitle.path, subtitle.style)).join(',')
   // 目标容器的编解码器约束决定音视频参数(如 WebM 只接受 AV1/VP9/Opus)
   const isNvencUsable = await detectNvencAvailability(ffmpegPath)
   const strategy = resolveEncodingStrategy(outputPath, isNvencUsable)
