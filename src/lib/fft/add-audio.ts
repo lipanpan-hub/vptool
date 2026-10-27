@@ -33,13 +33,14 @@ const EN_SUBTITLE_MARGIN_V = 5
 // 中文字幕: 底部居中(默认对齐 2), 大字号, 抬高到英文上方
 const ZH_SUBTITLE_STYLE: SubtitleStyle = {fontSize: ZH_SUBTITLE_FONT_SIZE, marginV: ZH_SUBTITLE_MARGIN_V}
 
-// 英文字幕: 底部居中常规位置(默认对齐), 小字号半透明, 仅为中文观众提供对照
+// 英文字幕: 底部居中常规位置(默认对齐), 小字号半透明, 仅为中文观众提供对照; WrapStyle=2 永远单行显示不自动换行
 const EN_SUBTITLE_STYLE: SubtitleStyle = {
   fontColor: '#FFFFFF',
   fontOpacity: EN_SUBTITLE_OPACITY,
   fontSize: EN_SUBTITLE_FONT_SIZE,
   marginV: EN_SUBTITLE_MARGIN_V,
   outlineColor: '#000000',
+  wrapStyle: 2,
 }
 // #endregion
 
@@ -49,7 +50,7 @@ export interface AddAudioOptions {
   progressStream?: NodeJS.WriteStream
   // 要烧写的中文字幕: 底部居中且抬高到英文上方, 大字号
   subtitleZhPath?: string
-  // 要烧写的英文字幕: 底部常规位置, 小字号半透明, 仅作对照
+  // 要烧写的英文字幕: 底部常规位置, 小字号半透明, 仅作对照, 永远单行显示
   subtitleEnPath?: string
 }
 // #endregion

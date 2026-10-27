@@ -1,4 +1,5 @@
-import {dirname} from 'node:path'
+import {readFile, writeFile} from 'node:fs/promises'
+import {basename, dirname, extname, join} from 'node:path'
 
 import {YtDlp} from 'ytdlp-nodejs'
 
@@ -26,6 +27,27 @@ function buildProgressLine(progress: {eta_str?: string; percentage_str?: string;
   }
 
   return parts.join(' | ')
+}
+
+// 在简介文件首行插入"频道名|视频URL"(便于后期按分隔符解析溯源, 重复下载时首行始终只保留一行, 不累积)
+async function prependUrlToDescription(videoPath: string, videoUrl: string, channelName: string | undefined, logger?: {log: (message: string) => void}): Promise<void> {
+  const videoName = basename(videoPath, extname(videoPath))
+  const descriptionPath = join(dirname(videoPath), `${videoName}.description`)
+
+  try {
+    const originalContent = await readFile(descriptionPath, 'utf8')
+    // 首行已包含相同链接时先移除, 避免重复下载累积多行 URL
+    const contentLines = originalContent.split('\n')
+    if (contentLines[0]?.includes(videoUrl)) {
+      contentLines.shift()
+    }
+    // 频道名缺失时首行退化为纯 URL
+    const sourceLine = channelName ? `${channelName}|${videoUrl}` : videoUrl
+    await writeFile(descriptionPath, `${sourceLine}\n${contentLines.join('\n')}`, 'utf8')
+    logger?.log('✓ 简介文件首行已写入视频链接')
+  } catch {
+    logger?.log('⚠ 未找到简介文件, 跳过写入视频链接')
+  }
 }
 
 // 抽取音频: 对合并后的成品视频单独抽取一份同名 mp3, 避免 bestvideo/bestaudio 分流中间文件被保留
@@ -154,12 +176,21 @@ export async function downloadVideo(
       process.stdout.write('\n')
     }
 
+    // 定位成品视频文件路径(分流/合并完成后 yt-dlp 回报的最终文件)
+    const videoPath = resolveVideoPath(result)
+
     if (extractAudio) {
       await extractAudioFromResult(result, logger)
     }
 
+    // 简介文件首行插入"频道名|视频链接", 便于溯源
+    if (writeDescription && videoPath) {
+      // 频道名优先取 channel, 缺失时回退 uploader(如 B 站), 与输出模板的回退逻辑一致
+      const channelName: string | undefined = result.info?.[0]?.channel || result.info?.[0]?.uploader
+      await prependUrlToDescription(videoPath, url, channelName, logger)
+    }
+
     // 返回视频所在目录(即 <标题>.<扩展名> 同名文件夹, 字幕/mp3/简介等附带产物都在其中)
-    const videoPath = resolveVideoPath(result)
     return videoPath ? dirname(videoPath) : undefined
   } catch (error) {
     if (lastProgressLength > 0) {

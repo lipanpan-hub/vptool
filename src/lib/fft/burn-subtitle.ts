@@ -25,6 +25,8 @@ export interface SubtitleStyle {
   marginV?: number
   // #RRGGBB
   outlineColor?: string
+  // 换行样式(ASS WrapStyle, 实测 force_style 可覆盖): 2 为禁止自动换行, 超长文本单行显示并横向溢出画面两侧
+  wrapStyle?: number
 }
 
 // 一条待烧写的字幕: path 为字幕文件, style 为该条字幕独立样式(多字幕可分别指定位置与字号)
@@ -85,6 +87,7 @@ export function buildForceStyle(style: SubtitleStyle): string {
   if (style.outlineColor) fields.push(`OutlineColour=${toAssColor(style.outlineColor, fontOpacity)}`)
   if (style.alignment !== undefined) fields.push(`Alignment=${style.alignment}`)
   if (style.marginV !== undefined) fields.push(`MarginV=${style.marginV}`)
+  if (style.wrapStyle !== undefined) fields.push(`WrapStyle=${style.wrapStyle}`)
 
   return fields.join(',')
 }

@@ -4,7 +4,7 @@
 // 音频与字幕的交互选择范围: 当前目录 + 当前目录下的 .ytbflow 目录
 // 源名不带 .old. 时先改名为 xxx.old.xxx 备份, 合并结果占用原文件名
 // 源名带 .old. 时视为备份文件, 不再改名备份, 合并结果直接占用去 old 后的名字
-// 可选烧写中英双字幕(此时视频重编码): 同在底部区域, 中文在上大字号, 英文在下小字号半透明仅作对照
+// 可选烧写中英双字幕(此时视频重编码): 同在底部区域, 中文在上大字号, 英文在下小字号半透明仅作对照且永远单行显示
 // 用 --subtitle-zh/--subtitle-en 传入, 或交互确认后分别选择; 两路都未选则不烧写
 
 import {Args, Flags} from '@oclif/core'
@@ -43,7 +43,7 @@ export default class FftAddAudio extends BaseCommand {
 
   static flags = {
     'delete-audio': Flags.boolean({char: 'd', description: '合并成功后删除源音频文件(默认保留)'}),
-    'subtitle-en': Flags.string({description: '要烧写的英文 vtt 字幕文件(底部小字号半透明, 仅作对照; 省略则交互询问)'}),
+    'subtitle-en': Flags.string({description: '要烧写的英文 vtt 字幕文件(底部小字号半透明仅作对照, 永远单行显示; 省略则交互询问)'}),
     'subtitle-zh': Flags.string({description: '要烧写的中文 vtt 字幕文件(底部居中抬高到英文上方, 大字号; 省略则交互询问)'}),
   }
 
