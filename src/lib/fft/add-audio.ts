@@ -27,15 +27,18 @@ const EN_SUBTITLE_FONT_SIZE = 8
 const EN_SUBTITLE_OPACITY = 0.3
 // 中文字幕底部距画面底边的距离: 抬高到英文字幕上方, 与英文错开不重叠
 const ZH_SUBTITLE_MARGIN_V = 15
+// 英文字幕底部距画面底边的距离: 底部常规位置(与 ffmpeg 缺省值一致)
+const EN_SUBTITLE_MARGIN_V = 5
 
 // 中文字幕: 底部居中(默认对齐 2), 大字号, 抬高到英文上方
 const ZH_SUBTITLE_STYLE: SubtitleStyle = {fontSize: ZH_SUBTITLE_FONT_SIZE, marginV: ZH_SUBTITLE_MARGIN_V}
 
-// 英文字幕: 底部居中常规位置(默认对齐与边距), 小字号半透明, 仅为中文观众提供对照
+// 英文字幕: 底部居中常规位置(默认对齐), 小字号半透明, 仅为中文观众提供对照
 const EN_SUBTITLE_STYLE: SubtitleStyle = {
   fontColor: '#FFFFFF',
   fontOpacity: EN_SUBTITLE_OPACITY,
   fontSize: EN_SUBTITLE_FONT_SIZE,
+  marginV: EN_SUBTITLE_MARGIN_V,
   outlineColor: '#000000',
 }
 // #endregion
