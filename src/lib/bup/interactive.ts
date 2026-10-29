@@ -5,6 +5,7 @@
 import {existsSync} from 'node:fs'
 import {isAbsolute, resolve} from 'node:path'
 
+import Fuse from 'fuse.js'
 import prompts from 'prompts'
 
 import {type BiliupClient, type BiliupStreamer, formatStreamerStatus} from './biliup-client.js'
@@ -98,31 +99,230 @@ export async function promptRequiredText(message: string): Promise<string> {
 // biliup 上传线路的可选值(与 biliup upload --help 一致)
 export const UPLOAD_LINES = ['bldsa', 'cnbldsa', 'andsa', 'atdsa', 'bda2', 'cnbd', 'anbd', 'atbd', 'tx', 'cntx', 'antx', 'attx', 'txa', 'alia', 'estx', 'akbd']
 
-// 常用投稿分区精选列表, 末项提供手动输入任意 id 的兜底
-const COMMON_TID_CHOICES = [
-  {title: '171 电子竞技', value: 171},
-  {title: '17 单机游戏', value: 17},
-  {title: '172 网络游戏', value: 172},
-  {title: '4 游戏综合', value: 4},
-  {title: '21 日常', value: 21},
-  {title: '231 生活', value: 231},
-  {title: '36 知识', value: 36},
-  {title: '201 科学科普', value: 201},
-  {title: '124 社科·法律·心理', value: 124},
-  {title: '207 人文历史', value: 207},
-  {title: '209 野生技术协会', value: 209},
-  {title: '3 音乐', value: 3},
-  {title: '28 原创音乐', value: 28},
-  {title: '31 翻唱', value: 31},
-  {title: '129 舞蹈', value: 129},
-  {title: '5 娱乐', value: 5},
-  {title: '181 影视', value: 181},
-  {title: '182 影视杂谈', value: 182},
-  {title: '183 影视剪辑', value: 183},
-  {title: '119 鬼畜', value: 119},
-  {title: '234 动物圈', value: 234},
-  {title: '211 美食', value: 211},
+// B 站分区表(全量大区 + 二级分区), 按常用度排序; 校对自 bilibili-API-collect「视频分区一览」
+// 与 biliup tid 分区表, 并经 B 站开放平台分区文档样例核对(截至 2026-10)
+interface BiliTidZone {
+  zoneName: string
+  mainTid: number
+  subs: {name: string, tid: number}[]
+}
+
+const BILI_TID_ZONES: BiliTidZone[] = [
+  {
+    zoneName: '游戏', mainTid: 4, subs: [
+      {tid: 17, name: '单机游戏'},
+      {tid: 171, name: '电子竞技'},
+      {tid: 172, name: '手机游戏'},
+      {tid: 65, name: '网络游戏'},
+      {tid: 173, name: '桌游棋牌'},
+      {tid: 121, name: 'GMV'},
+      {tid: 136, name: '音游'},
+      {tid: 19, name: 'Mugen'},
+    ],
+  },
+  {
+    zoneName: '生活', mainTid: 160, subs: [
+      {tid: 21, name: '日常'},
+      {tid: 138, name: '搞笑'},
+      {tid: 250, name: '出行'},
+      {tid: 254, name: '亲子'},
+      {tid: 251, name: '三农'},
+      {tid: 239, name: '家居房产'},
+      {tid: 161, name: '手工'},
+      {tid: 162, name: '绘画'},
+    ],
+  },
+  {
+    zoneName: '知识', mainTid: 36, subs: [
+      {tid: 201, name: '科学科普'},
+      {tid: 124, name: '社科·法律·心理'},
+      {tid: 228, name: '人文历史'},
+      {tid: 207, name: '财经商业'},
+      {tid: 208, name: '校园学习'},
+      {tid: 209, name: '职业职场'},
+      {tid: 229, name: '设计·创意'},
+      {tid: 122, name: '野生技术协会'},
+    ],
+  },
+  {
+    zoneName: '音乐', mainTid: 3, subs: [
+      {tid: 28, name: '原创音乐'},
+      {tid: 31, name: '翻唱'},
+      {tid: 59, name: '演奏'},
+      {tid: 193, name: 'MV'},
+      {tid: 29, name: '音乐现场'},
+      {tid: 30, name: 'VOCALOID·UTAU'},
+      {tid: 243, name: '乐评盘点'},
+      {tid: 244, name: '音乐教学'},
+      {tid: 265, name: 'AI音乐'},
+      {tid: 266, name: '音乐粉丝饭拍'},
+      {tid: 267, name: '电台'},
+      {tid: 130, name: '音乐综合'},
+    ],
+  },
+  {
+    zoneName: '影视', mainTid: 181, subs: [
+      {tid: 182, name: '影视杂谈'},
+      {tid: 183, name: '影视剪辑'},
+      {tid: 85, name: '短片'},
+      {tid: 184, name: '预告·资讯'},
+    ],
+  },
+  {
+    zoneName: '动画', mainTid: 1, subs: [
+      {tid: 24, name: 'MAD·AMV'},
+      {tid: 25, name: 'MMD·3D'},
+      {tid: 47, name: '同人·手书'},
+      {tid: 257, name: '配音'},
+      {tid: 253, name: '动漫杂谈'},
+      {tid: 210, name: '手办·模玩'},
+      {tid: 86, name: '特摄'},
+      {tid: 27, name: '综合'},
+    ],
+  },
+  {
+    zoneName: '美食', mainTid: 211, subs: [
+      {tid: 76, name: '美食制作'},
+      {tid: 212, name: '美食侦探'},
+      {tid: 213, name: '美食测评'},
+      {tid: 214, name: '田园美食'},
+      {tid: 215, name: '美食记录'},
+    ],
+  },
+  {
+    zoneName: '舞蹈', mainTid: 129, subs: [
+      {tid: 20, name: '宅舞'},
+      {tid: 198, name: '街舞'},
+      {tid: 199, name: '明星舞蹈'},
+      {tid: 200, name: '国风舞蹈'},
+      {tid: 255, name: '颜值·网红舞'},
+      {tid: 154, name: '舞蹈综合'},
+      {tid: 156, name: '舞蹈教程'},
+    ],
+  },
+  {
+    zoneName: '鬼畜', mainTid: 119, subs: [
+      {tid: 22, name: '鬼畜调教'},
+      {tid: 26, name: '音MAD'},
+      {tid: 126, name: '人力VOCALOID'},
+      {tid: 216, name: '鬼畜剧场'},
+      {tid: 127, name: '教程演示'},
+    ],
+  },
+  {
+    zoneName: '国创', mainTid: 167, subs: [
+      {tid: 153, name: '国产动画'},
+      {tid: 168, name: '国产原创相关'},
+      {tid: 169, name: '布袋戏'},
+      {tid: 195, name: '动态漫·广播剧'},
+      {tid: 170, name: '资讯'},
+    ],
+  },
+  {
+    zoneName: '娱乐', mainTid: 5, subs: [
+      {tid: 241, name: '娱乐杂谈'},
+      {tid: 262, name: 'CP安利'},
+      {tid: 263, name: '颜值安利'},
+      {tid: 242, name: '娱乐粉丝创作'},
+      {tid: 264, name: '娱乐资讯'},
+      {tid: 137, name: '明星综合'},
+      {tid: 71, name: '综艺'},
+    ],
+  },
+  {
+    zoneName: '科技', mainTid: 188, subs: [
+      {tid: 95, name: '数码'},
+      {tid: 230, name: '软件应用'},
+      {tid: 231, name: '计算机技术'},
+      {tid: 232, name: '科工机械'},
+      {tid: 233, name: '极客DIY'},
+    ],
+  },
+  {
+    zoneName: '动物圈', mainTid: 217, subs: [
+      {tid: 218, name: '喵星人'},
+      {tid: 219, name: '汪星人'},
+      {tid: 222, name: '小宠异宠'},
+      {tid: 221, name: '野生动物'},
+      {tid: 220, name: '动物二创'},
+      {tid: 75, name: '动物综合'},
+    ],
+  },
+  {
+    zoneName: '运动', mainTid: 234, subs: [
+      {tid: 235, name: '篮球'},
+      {tid: 249, name: '足球'},
+      {tid: 164, name: '健身'},
+      {tid: 236, name: '竞技体育'},
+      {tid: 237, name: '运动文化'},
+      {tid: 238, name: '运动综合'},
+    ],
+  },
+  {
+    zoneName: '汽车', mainTid: 223, subs: [
+      {tid: 258, name: '汽车知识科普'},
+      {tid: 227, name: '购车攻略'},
+      {tid: 247, name: '新能源车'},
+      {tid: 245, name: '赛车'},
+      {tid: 246, name: '改装玩车'},
+      {tid: 240, name: '摩托车'},
+      {tid: 248, name: '房车'},
+      {tid: 176, name: '汽车生活'},
+    ],
+  },
+  {
+    zoneName: '时尚', mainTid: 155, subs: [
+      {tid: 157, name: '美妆护肤'},
+      {tid: 252, name: '仿妆cos'},
+      {tid: 158, name: '穿搭'},
+      {tid: 159, name: '时尚潮流'},
+    ],
+  },
+  {
+    zoneName: '纪录片', mainTid: 177, subs: [
+      {tid: 37, name: '人文·历史'},
+      {tid: 178, name: '科学·探索·自然'},
+      {tid: 179, name: '军事'},
+      {tid: 180, name: '社会·美食·旅行'},
+    ],
+  },
+  {
+    zoneName: '电影', mainTid: 23, subs: [
+      {tid: 147, name: '国产电影'},
+      {tid: 146, name: '日本电影'},
+      {tid: 145, name: '欧美电影'},
+      {tid: 83, name: '其他国家'},
+    ],
+  },
+  {
+    zoneName: '电视剧', mainTid: 11, subs: [
+      {tid: 185, name: '国产剧'},
+      {tid: 187, name: '海外剧'},
+    ],
+  },
+  {
+    zoneName: '番剧', mainTid: 13, subs: [
+      {tid: 33, name: '连载动画'},
+      {tid: 32, name: '完结动画'},
+      {tid: 51, name: '资讯'},
+      {tid: 152, name: '官方延伸'},
+    ],
+  },
+  {
+    zoneName: '资讯', mainTid: 202, subs: [
+      {tid: 203, name: '热点'},
+      {tid: 204, name: '环球'},
+      {tid: 205, name: '社会'},
+      {tid: 206, name: '综合'},
+    ],
+  },
 ]
+
+// 摊平成选择项: 标题附大区名以便区分重名分区(如两处"资讯"), 同时可按大区名搜索; 单独导出便于测试
+export const BILI_TID_CHOICES: {title: string, value: number}[] = BILI_TID_ZONES.flatMap((zone) => [
+  {title: `${zone.mainTid} ${zone.zoneName}(主分区)`, value: zone.mainTid},
+  ...zone.subs.map((sub) => ({title: `${sub.tid} ${sub.name}(${zone.zoneName})`, value: sub.tid})),
+])
 
 // "手动输入分区 id"选项的哨兵值, 命中后追问数字输入
 const MANUAL_TID_VALUE = -1
@@ -188,13 +388,13 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
     : flags.source
   // #endregion
 
-  // #region 投稿分区: 常用列表选择或手动输入 id
+  // #region 投稿分区: 全量分区表模糊搜索选择, 也可手动输入任意 id
   let tid = flags.tid
   if (tid === undefined) {
-    const selected = await askSelect<number>('投稿分区:', [
-      ...COMMON_TID_CHOICES,
+    const selected = await askSelectWithSearch<number>('投稿分区(输入分区名/大区名/id 过滤):', [
+      ...BILI_TID_CHOICES,
       {title: '手动输入分区 id…', value: MANUAL_TID_VALUE},
-    ], 0)
+    ])
     tid = selected === MANUAL_TID_VALUE ? (await askRequiredNumber('分区 id:')) : selected
   }
   // #endregion
@@ -270,6 +470,26 @@ async function askCoverPath(): Promise<string | undefined> {
 /** 通用 select 提问, 用户中断(Ctrl+C)时统一抛"已取消" */
 async function askSelect<T>(message: string, choices: {title: string, value: T}[], initial: number): Promise<T> {
   const response = await prompts({choices, initial, message, name: 'value', type: 'select'})
+  if (response.value === undefined) {
+    throw new Error('已取消')
+  }
+  return response.value as T
+}
+
+/** 带模糊搜索的长列表 select 提问(与 vtt 文件选择同一套 autocomplete + fuse 方案) */
+async function askSelectWithSearch<T>(message: string, choices: {title: string, value: T}[]): Promise<T> {
+  // ignoreLocation 关闭位置惩罚; threshold 取 0.65 以支持缩略词匹配(如"电竞"命中"电子竞技")且保留错字容错
+  const fuse = new Fuse(choices, {keys: ['title'], threshold: 0.65, ignoreLocation: true})
+  const response = await prompts({
+    choices,
+    message,
+    name: 'value',
+    suggest: async (input: string, items: any[]) => {
+      if (!input) return items
+      return fuse.search(input).map((searchResult) => searchResult.item)
+    },
+    type: 'autocomplete',
+  })
   if (response.value === undefined) {
     throw new Error('已取消')
   }
