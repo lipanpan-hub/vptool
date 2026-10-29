@@ -1,6 +1,8 @@
 import {Args, Flags} from '@oclif/core'
+import {dirname} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
+import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
 import {FetchVideoWorkflow, type FetchVideoResult} from '../../lib/dyd/fetch-video-workflow.js'
 import {providers} from '../../lib/dyd/tikhub-providers.js'
 
@@ -50,7 +52,14 @@ export default class DydFetchOneVideo extends BaseCommand {
         this.config.configDir,
         this,
       )
-      return await workflow.execute()
+      const result = await workflow.execute()
+
+      // 沿用 vp dl 的机制: 在视频所在目录直接 spawn 交互式 shell, exit 退出后返回
+      const videoDir = dirname(result.videoPath)
+      this.log(`\n进入目录: ${videoDir} (输入 exit 退出并返回)`)
+      await spawnShellAt(videoDir)
+
+      return result
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
     }

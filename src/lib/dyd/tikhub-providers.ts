@@ -58,6 +58,7 @@ function parseAwemeDetail(json: any): ParsedVideo {
   }
 
   return {
+    authorName: detail.author?.nickname || '',
     awemeId: detail.aweme_id || '',
     desc: detail.desc || '',
     videoUrl: pickBestUrl(detail.video),

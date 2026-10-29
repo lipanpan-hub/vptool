@@ -1,5 +1,6 @@
 // 解析出的视频信息, 供下载器使用
 export interface ParsedVideo {
+  authorName: string
   awemeId: string
   desc: string
   videoUrl: string

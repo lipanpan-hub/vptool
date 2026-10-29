@@ -8,7 +8,7 @@ import {extractAudioToMp3} from '../dl/extract-audio.js'
 export interface DownloadDouyinOptions {
   // 下载视频后额外抽取一份 mp3 音频
   extractAudio: boolean
-  // prefix 之后的输出根目录, 域名与视频名目录会在其下创建
+  // prefix 之后的输出根目录, 域名、频道名与视频名目录会在其下创建
   outputBaseDir: string
   token: string
 }
@@ -68,9 +68,10 @@ export class DouyinVideoDownloader {
     const video = await this.provider.fetchVideo(this.input, token)
     this.logger?.log(`✓ 视频标题: ${video.desc || video.awemeId}\n`)
 
-    // 路径结构: <base>/<prefix>/douyin.com/<视频名>/<视频名>.mp4
+    // 路径结构: <base>/<prefix>/douyin.com/<频道名>/<视频名>/<视频名>.mp4
     const name = this.sanitizeName(video.desc || video.awemeId)
-    const dir = join(outputBaseDir, 'douyin.com', name)
+    const channelDir = this.sanitizeName(video.authorName || '未知作者')
+    const dir = join(outputBaseDir, 'douyin.com', channelDir, name)
     mkdirSync(dir, {recursive: true})
     const videoPath = join(dir, `${name}.mp4`)
 
