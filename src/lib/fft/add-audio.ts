@@ -46,8 +46,8 @@ const EN_SUBTITLE_STYLE: SubtitleStyle = {
 
 // #region 类型定义
 export interface AddAudioOptions {
-  // 烧写字幕时进度行写入的流, 默认 stdout; --json 模式下传 stderr
-  progressStream?: NodeJS.WriteStream
+  // 烧写字幕时进度行写入的流, 默认 stdout; 传 null 禁用进度(--json 模式)
+  progressStream?: NodeJS.WriteStream | null
   // 要烧写的中文字幕: 底部居中且抬高到英文上方, 大字号
   subtitleZhPath?: string
   // 要烧写的英文字幕: 底部常规位置, 小字号半透明, 仅作对照, 永远单行显示
@@ -166,7 +166,7 @@ async function burnSubtitleIntoOutput(
   outputPath: string,
   subtitleZhPath: string | undefined,
   subtitleEnPath: string | undefined,
-  progressStream?: NodeJS.WriteStream,
+  progressStream?: NodeJS.WriteStream | null,
 ): Promise<void> {
   const burnedPath = buildBurnedPath(outputPath)
   // 中英文字幕同在底部区域, 中文靠 MarginV 抬高到英文上方; 先烧中文再烧英文, 叠放次序不影响可读性

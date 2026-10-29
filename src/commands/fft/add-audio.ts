@@ -113,8 +113,8 @@ export default class FftAddAudio extends BaseCommand {
 
     // #region 执行合并
     this.log(`正在把 ${audioPath} 合并进 ${videoPath}...`)
-    // JSON 模式下烧写进度行改写到 stderr, 保证 stdout 只有结果 JSON
-    const progressStream = this.jsonEnabled() ? process.stderr : process.stdout
+    // JSON 模式下不显示烧写进度, 保证输出只有结果 JSON
+    const progressStream = this.jsonEnabled() ? null : process.stdout
     await addAudioToVideo(videoPath, audioPath, {
       progressStream,
       subtitleEnPath: subtitleEnPath ?? undefined,

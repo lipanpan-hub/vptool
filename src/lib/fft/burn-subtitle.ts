@@ -38,8 +38,8 @@ export interface SubtitleInput {
 export interface BurnSubtitleOptions {
   crf?: number
   outputPath?: string
-  // 进度行写入的流, 默认 stdout; --json 模式下传 stderr 以保证 stdout 只有结果 JSON
-  progressStream?: NodeJS.WriteStream
+  // 进度行写入的流, 默认 stdout; 传 null 显式禁用进度(--json 模式不需要进度)
+  progressStream?: NodeJS.WriteStream | null
 }
 // #endregion
 
@@ -254,21 +254,23 @@ class ProgressLine {
   private readonly isEnabled: boolean
   private lastLength = 0
 
-  constructor(private readonly stream: NodeJS.WriteStream) {
-    this.isEnabled = Boolean(stream.isTTY)
+  constructor(private readonly stream: NodeJS.WriteStream | null) {
+    this.isEnabled = Boolean(stream?.isTTY)
   }
 
   clear(): void {
     if (!this.isEnabled || (this.lastLength === 0)) return
 
-    this.stream.write(`\r${' '.repeat(this.lastLength)}\r`)
+    // isEnabled 为 true 时 stream 必非 null, 可选链仅为通过类型检查
+    this.stream?.write(`\r${' '.repeat(this.lastLength)}\r`)
     this.lastLength = 0
   }
 
   update(line: string): void {
     if (!this.isEnabled) return
 
-    this.stream.write(`\r${' '.repeat(this.lastLength)}\r${line}`)
+    // isEnabled 为 true 时 stream 必非 null, 可选链仅为通过类型检查
+    this.stream?.write(`\r${' '.repeat(this.lastLength)}\r${line}`)
     this.lastLength = line.length
   }
 }
@@ -305,7 +307,8 @@ export async function burnSubtitle(
   const crf = options.crf ?? strategy.defaultCrf
   const sourceAudioCodec = await readAudioCodec(videoPath)
   const totalSeconds = await readTotalSecondsSafely(videoPath)
-  const progressLine = new ProgressLine(options.progressStream ?? process.stdout)
+  // null 表示禁用进度行, 未传时默认 stdout
+  const progressLine = new ProgressLine(options.progressStream === null ? null : (options.progressStream ?? process.stdout))
 
   return new Promise((resolve, reject) => {
     const proc = spawn(ffmpegPath, [
