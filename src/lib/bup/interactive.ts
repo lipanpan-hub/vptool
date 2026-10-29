@@ -3,16 +3,19 @@
  * 未传参数的命令经由此模块向用户收集主播选择或必填文本。
  */
 import {existsSync} from 'node:fs'
-import {isAbsolute, resolve} from 'node:path'
+import {isAbsolute, join, resolve} from 'node:path'
 
 import Fuse from 'fuse.js'
 import prompts from 'prompts'
 
 import {type BiliupClient, type BiliupStreamer, formatStreamerStatus} from './biliup-client.js'
-import {selectOptionalFile} from '../vtt/select-file.js'
+import {selectOptionalFileFromDirs, type FileScanDir} from '../vtt/select-file.js'
 
-// 常见封面图片扩展名, 交互选择时据此过滤当前目录文件
+// 常见封面图片扩展名, 交互选择时据此过滤候选文件
 const COVER_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png']
+
+// 封面额外扫描的子目录名(与 mpv/fft 命令的扫描范围保持一致)
+const EXTRA_SCAN_DIR_NAME = '.ytbflow'
 
 /**
  * 收集待上传视频的绝对路径列表(upload 用): 命令行传参时逐个校验存在性,
@@ -340,10 +343,10 @@ export interface BupUploadFlagsSnapshot {
   limit?: number
   submit?: string
   dynamic?: string
-  dtime?: number
+  dtime?: string
 }
 
-/** 收集结果: tid/copyright/limit 必有值, 其余 undefined 表示不向 biliup 传该参数 */
+/** 收集结果: tid/copyright/limit 必有值, 其余 undefined 表示不向 biliup 传该参数; dtime 保持人类可读文本, 组装 biliup 参数时才转时间戳 */
 export interface BupUploadOptions {
   title?: string
   desc?: string
@@ -356,12 +359,12 @@ export interface BupUploadOptions {
   limit: number
   submit?: string
   dynamic?: string
-  dtime?: number
+  dtime?: string
 }
 
 /**
  * 交互式补全 upload 的投稿参数: 命令行已提供的值原样沿用, 仅对未提供的逐项提问。
- * 所有提问均有默认项或允许回车跳过, 一路回车即按默认值投稿。
+ * 各提问均有默认项或允许回车跳过; 延时发布例外——回车取默认(+5 小时后发布), 输入 - 才不延时。
  * 自测时经 prompts.inject() 注入答案(全局队列按提问顺序消费)。
  */
 export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promise<BupUploadOptions> {
@@ -371,8 +374,7 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
   const tag = flags.tag ?? (await askOptionalText('视频标签, 逗号分隔(回车跳过):'))
   const cover = flags.cover ?? (await askCoverPath())
   const dynamic = flags.dynamic ?? (await askOptionalText('空间动态内容(回车跳过):'))
-  const dtimeText = await askOptionalText('延时发布的 10 位秒级时间戳(回车跳过):', validateUnixSeconds)
-  const dtime = dtimeText === undefined ? undefined : Number(dtimeText)
+  const dtime = flags.dtime ?? (await askDelayTime())
   // #endregion
 
   // #region 作品类型: 决定是否追问转载来源
@@ -460,11 +462,16 @@ async function askOptionalText(message: string, validate?: (inputValue: string) 
 }
 
 /**
- * 封面路径交互选择: 扫描当前目录图片列表(可模糊搜索), 首项"跳过"即不设置封面;
- * 选中项必然真实存在, 无需再校验。目录无图片时仅剩跳过项, 同样可回车跳过。
+ * 封面路径交互选择: 扫描当前目录与 .ytbflow 子目录的图片列表(可模糊搜索, 条目标注来源目录),
+ * 首项"跳过"即不设置封面; 选中项必然真实存在, 无需再校验。
+ * 两处均无图片时不弹菜单, 直接视为跳过。
  */
 async function askCoverPath(): Promise<string | undefined> {
-  return selectOptionalFile(COVER_IMAGE_EXTENSIONS, '封面图片(回车选首项即跳过, 可输入关键词过滤):')
+  const scanDirs: readonly FileScanDir[] = [
+    {label: '当前目录', path: process.cwd()},
+    {label: EXTRA_SCAN_DIR_NAME, path: join(process.cwd(), EXTRA_SCAN_DIR_NAME)},
+  ]
+  return selectOptionalFileFromDirs(scanDirs, COVER_IMAGE_EXTENSIONS, '封面图片(回车选首项即跳过, 可输入关键词过滤):')
 }
 
 /** 通用 select 提问, 用户中断(Ctrl+C)时统一抛"已取消" */
@@ -525,7 +532,74 @@ async function askNumberWithDefault(message: string, defaultValue: number): Prom
   return trimmedText === '' ? defaultValue : Number(trimmedText)
 }
 
-/** dtime 校验: 必须是 10 位秒级时间戳 */
-function validateUnixSeconds(inputValue: string): string | true {
-  return inputValue.trim() === '' || /^\d{10}$/.test(inputValue.trim()) ? true : '请输入 10 位秒级时间戳'
+/**
+ * 解析延时发布时间文本为 10 位秒级时间戳: 格式 YYYY-MM-DD HH:mm, 按本地时区解释;
+ * 距 now 不足 4 小时(B站延时发布规则)或日期不存在(如 2026-02-30)时抛错。
+ * 单独导出便于测试与 upload 命令复用。
+ */
+export function parseDelayTime(text: string, now: Date = new Date()): number {
+  const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(text.trim())
+  if (match === null) {
+    throw new Error(`延时发布时间格式应为 YYYY-MM-DD HH:mm: ${text}`)
+  }
+
+  const [year, month, day, hour, minute] = match.slice(1).map(Number)
+  const parsedDate = new Date(year, month - 1, day, hour, minute)
+  // 往返校验: 防止 2026-02-30 这类不存在的日期被 Date 静默进位成 3 月初
+  const isRealDate = (parsedDate.getFullYear() === year) && (parsedDate.getMonth() === month - 1)
+    && (parsedDate.getDate() === day) && (parsedDate.getHours() === hour) && (parsedDate.getMinutes() === minute)
+  if (!isRealDate) {
+    throw new Error(`延时发布时间不存在: ${text}`)
+  }
+
+  const delaySeconds = (parsedDate.getTime() - now.getTime()) / 1000
+  if (delaySeconds <= 4 * 3600) {
+    throw new Error(`延时发布时间需晚于现在 4 小时: ${text}`)
+  }
+  return Math.floor(parsedDate.getTime() / 1000)
+}
+
+/** dtime 交互输入校验: 格式与时限不合法时返回错误消息, 合法返回 true */
+function validateDelayTime(inputValue: string): string | true {
+  try {
+    parseDelayTime(inputValue)
+    return true
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
+}
+
+// 两位数补零(延时时间的月/日/时/分格式化用)
+const pad2 = (num: number) => String(num).padStart(2, '0')
+
+/** 默认延时时刻: 当前时间 + 5 小时(留出 B 站 >4 小时规则的余量), 格式化为 YYYY-MM-DD HH:mm; 单独导出便于测试 */
+export function buildDefaultDelayTime(now: Date = new Date()): string {
+  const defaultDate = new Date(now.getTime() + 5 * 3600 * 1000)
+  return `${defaultDate.getFullYear()}-${pad2(defaultDate.getMonth() + 1)}-${pad2(defaultDate.getDate())} ${pad2(defaultDate.getHours())}:${pad2(defaultDate.getMinutes())}`
+}
+
+/**
+ * 延时发布时间交互输入: 默认值(+5 小时后)经 initial 预填, 回车即取默认或在其基础上修改;
+ * 输入 -(或清空)表示不延时; 其余按 YYYY-MM-DD HH:mm 校验, 非法时要求重填。
+ */
+async function askDelayTime(): Promise<string | undefined> {
+  const defaultDelayText = buildDefaultDelayTime()
+  const response = await prompts({
+    initial: defaultDelayText,
+    message: `延时发布时间(回车取默认 ${defaultDelayText}, 输入 - 不延时):`,
+    name: 'value',
+    type: 'text',
+    validate: (inputValue: string) => {
+      const trimmedText = inputValue.trim()
+      if (trimmedText === '' || trimmedText === '-') {
+        return true
+      }
+      return validateDelayTime(trimmedText)
+    },
+  })
+  if (response.value === undefined) {
+    throw new Error('已取消')
+  }
+  const trimmedText = (response.value as string).trim()
+  return trimmedText === '' || trimmedText === '-' ? undefined : trimmedText
 }

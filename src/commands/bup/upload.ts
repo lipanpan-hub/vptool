@@ -8,6 +8,7 @@ import {
   UPLOAD_LINES,
   collectUploadVideoPaths,
   fillUploadOptionsWithDefaults,
+  parseDelayTime,
   promptUploadOptions,
   type BupUploadFlagsSnapshot,
   type BupUploadOptions,
@@ -49,8 +50,8 @@ export default class BupUpload extends BaseCommand {
     limit: Flags.integer({description: '单文件最大并发数(未传时交互输入, 交互默认 3)'}),
     submit: Flags.string({description: '提交接口', options: ['app', 'web', 'b-cut-android']}),
     dynamic: Flags.string({description: '空间动态内容'}),
-    // 延时发布: 距提交需大于 4 小时的 10 位秒级时间戳
-    dtime: Flags.integer({description: '延时发布的 10 位秒级时间戳'}),
+    // 延时发布: 格式 YYYY-MM-DD HH:mm(本地时区), B站要求距提交需大于 4 小时, 组装参数时统一转秒级时间戳
+    dtime: Flags.string({description: '延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时)'}),
     fromYaml: Flags.string({description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
   }
 
@@ -93,6 +94,8 @@ export default class BupUpload extends BaseCommand {
     // #endregion
 
     // #region 组装 biliup 参数(值为 undefined 的项不传, 沿用 biliup 自身默认行为)
+    // 延时发布时间在此统一转秒级时间戳(交互/命令行/JSON 三条来源的兜底校验点)
+    const dtimeSeconds = this.resolveDelayTimeSeconds(uploadOptions.dtime)
     const biliupArguments = ['upload', ...videoPaths]
     if (uploadOptions.title !== undefined) biliupArguments.push('--title', uploadOptions.title)
     if (uploadOptions.desc !== undefined) biliupArguments.push('--desc', uploadOptions.desc)
@@ -104,7 +107,7 @@ export default class BupUpload extends BaseCommand {
     biliupArguments.push('--limit', String(uploadOptions.limit))
     if (uploadOptions.submit !== undefined) biliupArguments.push('--submit', uploadOptions.submit)
     if (uploadOptions.dynamic !== undefined) biliupArguments.push('--dynamic', uploadOptions.dynamic)
-    if (uploadOptions.dtime !== undefined) biliupArguments.push('--dtime', String(uploadOptions.dtime))
+    if (dtimeSeconds !== undefined) biliupArguments.push('--dtime', String(dtimeSeconds))
     // #endregion
 
     // #region 前台执行上传(继承 stdio 展示 biliup 原生进度, cwd 指向 biliupR 目录以读取 cookies.json)
@@ -146,6 +149,18 @@ export default class BupUpload extends BaseCommand {
     return fillUploadOptionsWithDefaults(mergedFlags)
   }
 
+  // 延时发布时间文本转秒级时间戳, 格式/时限非法时终止命令; undefined 直通表示不延时
+  private resolveDelayTimeSeconds(dtimeText: string | undefined): number | undefined {
+    if (dtimeText === undefined) {
+      return undefined
+    }
+    try {
+      return parseDelayTime(dtimeText)
+    } catch (error) {
+      this.error(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   // 读取 --from-yaml 指定的预设(相对路径按当前目录解析); 未传 flag 返回 undefined, 文件非法时终止命令
   private loadPresetOrDefault(fromYamlPath: string | undefined): UploadPreset | undefined {
     if (fromYamlPath === undefined) {
@@ -154,10 +169,34 @@ export default class BupUpload extends BaseCommand {
     const importPath = resolve(fromYamlPath)
     try {
       const preset = loadUploadPreset(importPath)
+      this.discardUnusablePresetDelayTime(preset)
       this.log(`已导入投稿预设: ${importPath}`)
       return preset
     } catch (error) {
       this.error(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  // 预设中的延时发布时间是绝对时刻, 复用时多半已过期; 不可用(过期/旧版裸时间戳/格式错)则丢弃回退交互重问
+  private discardUnusablePresetDelayTime(preset: UploadPreset): void {
+    // 运行时可能是旧版预设残留的 number 时间戳, 故按 unknown 收窄
+    const presetDtime: unknown = preset.uploadOptions.dtime
+    if (presetDtime === undefined) {
+      return
+    }
+
+    if (typeof presetDtime !== 'string') {
+      this.warn(`预设中的延时发布时间为旧版时间戳格式, 已忽略: ${presetDtime}`)
+      delete preset.uploadOptions.dtime
+      return
+    }
+
+    try {
+      parseDelayTime(presetDtime)
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      this.warn(`预设中的延时发布时间不可用(${reason}), 将重新询问`)
+      delete preset.uploadOptions.dtime
     }
   }
 }
