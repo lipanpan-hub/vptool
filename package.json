@@ -113,7 +113,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "shx rm -rf dist && tsc -b",
+    "build": "shx rm -rf dist tsconfig.tsbuildinfo oclif.manifest.json && tsc -b && oclif manifest",
     "start": "node ./bin/run.js",
     "debug": "cross-env DEBUG=oclif:vp:dl:* ./bin/run.js",
     "lint": "eslint",

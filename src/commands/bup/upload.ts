@@ -21,6 +21,7 @@ import {selectFile} from '../../lib/vtt/select-file.js'
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.flv', '.webm', '.ts', '.mov', '.avi', '.m4v']
 
 export default class BupUpload extends BaseCommand {
+  static aliases = ['bup:up']
   // 允许多个位置参数(多P投稿), 通过 argv 收集
   static strict = false
 
@@ -52,7 +53,7 @@ export default class BupUpload extends BaseCommand {
     dynamic: Flags.string({description: '空间动态内容'}),
     // 延时发布: 格式 YYYY-MM-DD HH:mm(本地时区), B站要求距提交需大于 4 小时, 组装参数时统一转秒级时间戳
     dtime: Flags.string({description: '延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时)'}),
-    fromYaml: Flags.string({description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
+    fromYaml: Flags.string({char: 'f', description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
   }
 
   public async run(): Promise<{presetPath: string; uploadOptions: BupUploadOptions; videoPaths: string[]}> {
