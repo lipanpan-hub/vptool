@@ -199,12 +199,15 @@ npm run lint        # eslint
 <!-- commands -->
 # Command Topics
 
+* [`vp auc`](docs/auc.md) - 管理 audiocpp 语音服务（启停 audiocpp_server、模型装卸、语音转写/字幕/合成）
 * [`vp autocomplete`](docs/autocomplete.md) - Display autocomplete installation instructions.
+* [`vp bup`](docs/bup.md) - 添加 biliup 监控主播(加入录制列表)
 * [`vp config`](docs/config.md) - 查看与编辑用户配置文件（支持内置 TUI 与外部编辑器）
 * [`vp dl`](docs/dl.md) - 下载视频并管理本地依赖环境（基于 yt-dlp 与 ffmpeg）
 * [`vp douyin`](docs/douyin.md) - 解析并下载抖音视频（可自动抽取音频）
 * [`vp fft`](docs/fft.md) - 基于 ffmpeg 的音视频处理（如从视频无损抽取音频）
 * [`vp help`](docs/help.md) - 显示帮助信息
+* [`vp mpv`](docs/mpv.md) - 交互式选择视频/vtt 字幕/音频后调用 mpv 播放: 字幕作为外挂字幕, 音频作为外部音轨替换视频原声
 * [`vp version`](docs/version.md) - 显示版本信息
 * [`vp vtt`](docs/vtt.md) - 处理 VTT 字幕（单行压缩、按分段重新打时间戳等）
 * [`vp wechat`](docs/wechat.md) - 下载微信公众号文章为本地文档

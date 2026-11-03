@@ -12,10 +12,13 @@
 
 ```
 USAGE
-  $ vp config edit [-e]
+  $ vp config edit [--json] [-e]
 
 FLAGS
   -e, --editor  交互式选择系统中可用的外部编辑器进行编辑
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   编辑用户配置文件, 默认启动内置 TUI 编辑器, 也可选择系统中的外部编辑器
@@ -37,7 +40,10 @@ _See code: [src/commands/config/edit.ts](https://github.com/lipanpan-hub/vptool/
 
 ```
 USAGE
-  $ vp config show
+  $ vp config show [--json]
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   列出所有的配置

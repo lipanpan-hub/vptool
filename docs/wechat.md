@@ -12,7 +12,7 @@
 
 ```
 USAGE
-  $ vp wechat mp dl URL [-o <value>] [-p tikhub-h5|tikhub]
+  $ vp wechat mp dl URL [--json] [-o <value>] [-p tikhub-h5|tikhub]
 
 ARGUMENTS
   URL  微信公众号文章链接
@@ -21,6 +21,9 @@ FLAGS
   -o, --output=<value>     输出目录(默认为配置文件中的 documentsPath)
   -p, --provider=<option>  指定解析接口(不指定则在存在多个接口时进入交互式选择菜单)
                            <options: tikhub-h5|tikhub>
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   下载微信公众号文章为本地 txt 文档(通过 TikHub 接口)
@@ -43,7 +46,10 @@ _See code: [src/commands/wechat/mp/dl.ts](https://github.com/lipanpan-hub/vptool
 
 ```
 USAGE
-  $ vp wechat mp opendir
+  $ vp wechat mp opendir [--json]
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   打开配置文件中 documentsPath 下的 1111微信公众号 目录

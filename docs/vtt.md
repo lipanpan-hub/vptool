@@ -12,7 +12,7 @@
 
 ```
 USAGE
-  $ vp vtt restamp [VTT] [TEXT] [-k] [-o <value>]
+  $ vp vtt restamp [VTT] [TEXT] [--json] [-k] [-o <value>]
 
 ARGUMENTS
   [VTT]   含逐词时间戳的源 VTT 文件(省略则扫描当前目录交互选择)
@@ -21,6 +21,9 @@ ARGUMENTS
 FLAGS
   -k, --keep            保留原始文本文件(默认生成后删除)
   -o, --output=<value>  输出文件路径(默认在文本文件旁生成 *.restamp.vtt)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   依据源 VTT 的逐词时间戳,为重新分段的文本逐段打上内嵌时间戳,每个段落生成一个 cue
@@ -39,7 +42,7 @@ _See code: [src/commands/vtt/restamp.ts](https://github.com/lipanpan-hub/vptool/
 
 ```
 USAGE
-  $ vp vtt zip [FILE] [-o <value>] [-z]
+  $ vp vtt zip [FILE] [--json] [-o <value>] [-z]
 
 ARGUMENTS
   [FILE]  VTT 字幕文件路径(省略则从当前目录交互选择)
@@ -47,6 +50,9 @@ ARGUMENTS
 FLAGS
   -o, --output=<value>  输出文件路径(默认在原文件旁生成 *.zip.vtt 或 *.txt)
   -z, --zip             压缩成单行字幕:去除说话人信息并完整保留单词级时间戳
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   将 VTT 多行字幕压缩为单行,去除说话人信息并完整保留单词级时间戳

@@ -11,7 +11,8 @@
 
 ```
 USAGE
-  $ vp douyin fetch-one-video INPUT [-k] [-o <value>] [-p app-v1|app-v2|app-v3|app-share|web-share|web-v2|web-v1]
+  $ vp douyin fetch-one-video INPUT [--json] [-k] [-o <value>] [-p
+  app-v1|app-v2|app-v3|app-share|web-share|web-v2|web-v1]
 
 ARGUMENTS
   INPUT  抖音视频链接或分享文案
@@ -21,6 +22,9 @@ FLAGS
   -o, --output=<value>     输出目录(默认为配置文件中的 documentsPath)
   -p, --provider=<option>  指定解析接口(不指定则进入交互式选择菜单)
                            <options: app-v1|app-v2|app-v3|app-share|web-share|web-v2|web-v1>
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   解析并下载单个抖音视频(通过 TikHub 接口), 下载后自动抽取音频

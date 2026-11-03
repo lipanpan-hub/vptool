@@ -22,23 +22,27 @@
 
 ## `vp fft aa [VIDEO] [AUDIO]`
 
-把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选把 vtt 字幕烧写进结果
+把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选烧写中英双字幕(同在底部区域, 中文在上大字号, 英文在下小字号半透明)
 
 ```
 USAGE
-  $ vp fft aa [VIDEO] [AUDIO] [-d] [-s <value>]
+  $ vp fft aa [VIDEO] [AUDIO] [--json] [-d] [--subtitle-en <value>] [--subtitle-zh <value>]
 
 ARGUMENTS
   [VIDEO]  源视频文件(省略则扫描当前目录交互选择)
   [AUDIO]  要加入的音轨文件(省略则扫描当前目录交互选择)
 
 FLAGS
-  -d, --delete-audio      合并成功后删除源音频文件(默认保留)
-  -s, --subtitle=<value>  要烧写进合并结果的 vtt 字幕文件(省略则交互询问是否烧写)
+  -d, --delete-audio         合并成功后删除源音频文件(默认保留)
+      --subtitle-en=<value>  要烧写的英文 vtt 字幕文件(底部小字号半透明仅作对照, 永远单行显示; 省略则交互询问)
+      --subtitle-zh=<value>  要烧写的中文 vtt 字幕文件(底部居中抬高到英文上方, 大字号; 省略则交互询问)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带
-  .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选把 vtt 字幕烧写进结果
+  .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选烧写中英双字幕(同在底部区域, 中文在上大字号, 英文在下小字号半透明)
 
 ALIASES
   $ vp fft aa
@@ -46,7 +50,7 @@ ALIASES
 EXAMPLES
   $ vp fft aa input.mp4 bgm.mp3
 
-  $ vp fft aa input.mp4 bgm.mp3 --subtitle sub.vtt
+  $ vp fft aa input.mp4 bgm.mp3 --subtitle-zh zh.vtt --subtitle-en en.vtt
 
   $ vp fft aa input.mp4 bgm.mp3 --delete-audio
 
@@ -55,23 +59,27 @@ EXAMPLES
 
 ## `vp fft add-audio [VIDEO] [AUDIO]`
 
-把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选把 vtt 字幕烧写进结果
+把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带 .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选烧写中英双字幕(同在底部区域, 中文在上大字号, 英文在下小字号半透明)
 
 ```
 USAGE
-  $ vp fft add-audio [VIDEO] [AUDIO] [-d] [-s <value>]
+  $ vp fft add-audio [VIDEO] [AUDIO] [--json] [-d] [--subtitle-en <value>] [--subtitle-zh <value>]
 
 ARGUMENTS
   [VIDEO]  源视频文件(省略则扫描当前目录交互选择)
   [AUDIO]  要加入的音轨文件(省略则扫描当前目录交互选择)
 
 FLAGS
-  -d, --delete-audio      合并成功后删除源音频文件(默认保留)
-  -s, --subtitle=<value>  要烧写进合并结果的 vtt 字幕文件(省略则交互询问是否烧写)
+  -d, --delete-audio         合并成功后删除源音频文件(默认保留)
+      --subtitle-en=<value>  要烧写的英文 vtt 字幕文件(底部小字号半透明仅作对照, 永远单行显示; 省略则交互询问)
+      --subtitle-zh=<value>  要烧写的中文 vtt 字幕文件(底部居中抬高到英文上方, 大字号; 省略则交互询问)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把新音轨合并进视频: 原声轨保留, copy 不重编码, 新音轨置为默认并排在首位; 源视频备份为 .old, 结果占用原文件名; 源名带
-  .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选把 vtt 字幕烧写进结果
+  .old. 时视为备份文件, 结果去除 .old 且不再备份; 可选烧写中英双字幕(同在底部区域, 中文在上大字号, 英文在下小字号半透明)
 
 ALIASES
   $ vp fft aa
@@ -79,7 +87,7 @@ ALIASES
 EXAMPLES
   $ vp fft add-audio input.mp4 bgm.mp3
 
-  $ vp fft add-audio input.mp4 bgm.mp3 --subtitle sub.vtt
+  $ vp fft add-audio input.mp4 bgm.mp3 --subtitle-zh zh.vtt --subtitle-en en.vtt
 
   $ vp fft add-audio input.mp4 bgm.mp3 --delete-audio
 
@@ -94,8 +102,8 @@ _See code: [src/commands/fft/add-audio.ts](https://github.com/lipanpan-hub/vptoo
 
 ```
 USAGE
-  $ vp fft bs [VIDEO] [SUBTITLE] [--alignment <value>] [--crf <value>] [--font-color <value>] [--font-name
-    <value>] [--font-size <value>] [-f] [--margin-v <value>] [--outline-color <value>] [-o <value>]
+  $ vp fft bs [VIDEO] [SUBTITLE] [--json] [--alignment <value>] [--crf <value>] [--font-color <value>]
+    [--font-name <value>] [--font-size <value>] [-f] [--margin-v <value>] [--outline-color <value>] [-o <value>]
 
 ARGUMENTS
   [VIDEO]     源视频文件(省略则扫描当前目录交互选择)
@@ -111,6 +119,9 @@ FLAGS
       --font-size=<value>      字号(默认 24)
       --margin-v=<value>       字幕距画面边缘的垂直像素
       --outline-color=<value>  字幕描边颜色, 十六进制 #RRGGBB
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把 vtt 字幕烧写(硬字幕)进视频画面: webm 走 AV1 编码, 其余容器优先用 NVENC 硬件编码
@@ -134,8 +145,8 @@ EXAMPLES
 
 ```
 USAGE
-  $ vp fft burn-subtitle [VIDEO] [SUBTITLE] [--alignment <value>] [--crf <value>] [--font-color <value>] [--font-name
-    <value>] [--font-size <value>] [-f] [--margin-v <value>] [--outline-color <value>] [-o <value>]
+  $ vp fft burn-subtitle [VIDEO] [SUBTITLE] [--json] [--alignment <value>] [--crf <value>] [--font-color <value>]
+    [--font-name <value>] [--font-size <value>] [-f] [--margin-v <value>] [--outline-color <value>] [-o <value>]
 
 ARGUMENTS
   [VIDEO]     源视频文件(省略则扫描当前目录交互选择)
@@ -151,6 +162,9 @@ FLAGS
       --font-size=<value>      字号(默认 24)
       --margin-v=<value>       字幕距画面边缘的垂直像素
       --outline-color=<value>  字幕描边颜色, 十六进制 #RRGGBB
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把 vtt 字幕烧写(硬字幕)进视频画面: webm 走 AV1 编码, 其余容器优先用 NVENC 硬件编码
@@ -176,7 +190,7 @@ _See code: [src/commands/fft/burn-subtitle.ts](https://github.com/lipanpan-hub/v
 
 ```
 USAGE
-  $ vp fft change-speed [AUDIO] [SPEED] [-f] [-o <value>]
+  $ vp fft change-speed [AUDIO] [SPEED] [--json] [-f] [-o <value>]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
@@ -185,6 +199,9 @@ ARGUMENTS
 FLAGS
   -f, --force           输出文件已存在时直接覆盖, 不再询问
   -o, --output=<value>  输出文件路径(默认在源文件旁生成带倍率后缀的新文件)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   借助 ffmpeg atempo 对音频调速(变速不变调, 保持原音色)
@@ -212,7 +229,7 @@ _See code: [src/commands/fft/change-speed.ts](https://github.com/lipanpan-hub/vp
 
 ```
 USAGE
-  $ vp fft cs [AUDIO] [SPEED] [-f] [-o <value>]
+  $ vp fft cs [AUDIO] [SPEED] [--json] [-f] [-o <value>]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
@@ -221,6 +238,9 @@ ARGUMENTS
 FLAGS
   -f, --force           输出文件已存在时直接覆盖, 不再询问
   -o, --output=<value>  输出文件路径(默认在源文件旁生成带倍率后缀的新文件)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   借助 ffmpeg atempo 对音频调速(变速不变调, 保持原音色)
@@ -246,10 +266,13 @@ EXAMPLES
 
 ```
 USAGE
-  $ vp fft ea [VIDEO]
+  $ vp fft ea [VIDEO] [--json]
 
 ARGUMENTS
   [VIDEO]  源 mp4 文件(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   从 mp4 中无损抽取原始音频流(不重编码), 输出同名 m4a 文件
@@ -269,10 +292,13 @@ EXAMPLES
 
 ```
 USAGE
-  $ vp fft extract-audio [VIDEO]
+  $ vp fft extract-audio [VIDEO] [--json]
 
 ARGUMENTS
   [VIDEO]  源 mp4 文件(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   从 mp4 中无损抽取原始音频流(不重编码), 输出同名 m4a 文件
@@ -294,10 +320,13 @@ _See code: [src/commands/fft/extract-audio.ts](https://github.com/lipanpan-hub/v
 
 ```
 USAGE
-  $ vp fft pb [MEDIA]
+  $ vp fft pb [MEDIA] [--json]
 
 ARGUMENTS
   [MEDIA]  音视频文件路径(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   调用 ffprobe 查看音视频文件的详细信息, 以人类可读方式输出
@@ -317,10 +346,13 @@ EXAMPLES
 
 ```
 USAGE
-  $ vp fft probe [MEDIA]
+  $ vp fft probe [MEDIA] [--json]
 
 ARGUMENTS
   [MEDIA]  音视频文件路径(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   调用 ffprobe 查看音视频文件的详细信息, 以人类可读方式输出
@@ -342,10 +374,13 @@ _See code: [src/commands/fft/probe.ts](https://github.com/lipanpan-hub/vptool/bl
 
 ```
 USAGE
-  $ vp fft ra [AUDIO]
+  $ vp fft ra [AUDIO] [--json]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把音频重新编码为目标格式(交互式选择源文件与目标格式)
@@ -365,10 +400,13 @@ EXAMPLES
 
 ```
 USAGE
-  $ vp fft reencode-audio [AUDIO]
+  $ vp fft reencode-audio [AUDIO] [--json]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   把音频重新编码为目标格式(交互式选择源文件与目标格式)
@@ -390,7 +428,7 @@ _See code: [src/commands/fft/reencode-audio.ts](https://github.com/lipanpan-hub/
 
 ```
 USAGE
-  $ vp fft trim-silence [AUDIO] [--min-silence <value>] [--padding <value>] [--threshold <value>]
+  $ vp fft trim-silence [AUDIO] [--json] [--min-silence <value>] [--padding <value>] [--threshold <value>]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
@@ -399,6 +437,9 @@ FLAGS
   --min-silence=<value>  [default: 0.5] 最短静音时长(秒), 只有达到该时长的静音才会被切除
   --padding=<value>      [default: 0.1] 语音片段首尾保留的余量(秒), 避免削掉字头字尾
   --threshold=<value>    [default: -30dB] 静音判定阈值, 响度低于该值视为静音(如 -30dB)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   切除音频中的静音片段, 只保留有人说话的片段
@@ -422,7 +463,7 @@ _See code: [src/commands/fft/trim-silence.ts](https://github.com/lipanpan-hub/vp
 
 ```
 USAGE
-  $ vp fft ts [AUDIO] [--min-silence <value>] [--padding <value>] [--threshold <value>]
+  $ vp fft ts [AUDIO] [--json] [--min-silence <value>] [--padding <value>] [--threshold <value>]
 
 ARGUMENTS
   [AUDIO]  源音频文件(省略则扫描当前目录交互选择)
@@ -431,6 +472,9 @@ FLAGS
   --min-silence=<value>  [default: 0.5] 最短静音时长(秒), 只有达到该时长的静音才会被切除
   --padding=<value>      [default: 0.1] 语音片段首尾保留的余量(秒), 避免削掉字头字尾
   --threshold=<value>    [default: -30dB] 静音判定阈值, 响度低于该值视为静音(如 -30dB)
+
+GLOBAL FLAGS
+  --json  Format output as json.
 
 DESCRIPTION
   切除音频中的静音片段, 只保留有人说话的片段
@@ -448,23 +492,32 @@ EXAMPLES
 
 ## `vp fft video-split-copy [VIDEO]`
 
-对 mp4 进行无损快速切割(不重编码), 按指定起止时间输出片段
+对 mp4 进行无损快速切割(不重编码): 逐段录入起止时间, 每段输出一个片段
 
 ```
 USAGE
-  $ vp fft video-split-copy [VIDEO]
+  $ vp fft video-split-copy [VIDEO] [--json] [--end <value>] [--start <value>]
 
 ARGUMENTS
   [VIDEO]  源 mp4 文件(省略则扫描当前目录交互选择)
 
+FLAGS
+  --end=<value>    结束时间(如 00:00:30 或 30); 与 --start 同时提供时直接切单段
+  --start=<value>  开始时间(如 00:00:10 或 10); 与 --end 同时提供时直接切单段
+
+GLOBAL FLAGS
+  --json  Format output as json.
+
 DESCRIPTION
-  对 mp4 进行无损快速切割(不重编码), 按指定起止时间输出片段
+  对 mp4 进行无损快速切割(不重编码): 逐段录入起止时间, 每段输出一个片段
 
 ALIASES
   $ vp fft vsc
 
 EXAMPLES
   $ vp fft video-split-copy input.mp4
+
+  $ vp fft video-split-copy input.mp4 --start 00:00:10 --end 00:00:30
 
   $ vp fft video-split-copy
 ```
@@ -473,23 +526,32 @@ _See code: [src/commands/fft/video-split-copy.ts](https://github.com/lipanpan-hu
 
 ## `vp fft vsc [VIDEO]`
 
-对 mp4 进行无损快速切割(不重编码), 按指定起止时间输出片段
+对 mp4 进行无损快速切割(不重编码): 逐段录入起止时间, 每段输出一个片段
 
 ```
 USAGE
-  $ vp fft vsc [VIDEO]
+  $ vp fft vsc [VIDEO] [--json] [--end <value>] [--start <value>]
 
 ARGUMENTS
   [VIDEO]  源 mp4 文件(省略则扫描当前目录交互选择)
 
+FLAGS
+  --end=<value>    结束时间(如 00:00:30 或 30); 与 --start 同时提供时直接切单段
+  --start=<value>  开始时间(如 00:00:10 或 10); 与 --end 同时提供时直接切单段
+
+GLOBAL FLAGS
+  --json  Format output as json.
+
 DESCRIPTION
-  对 mp4 进行无损快速切割(不重编码), 按指定起止时间输出片段
+  对 mp4 进行无损快速切割(不重编码): 逐段录入起止时间, 每段输出一个片段
 
 ALIASES
   $ vp fft vsc
 
 EXAMPLES
   $ vp fft vsc input.mp4
+
+  $ vp fft vsc input.mp4 --start 00:00:10 --end 00:00:30
 
   $ vp fft vsc
 ```

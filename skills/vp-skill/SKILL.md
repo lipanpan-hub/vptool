@@ -112,7 +112,7 @@ Agent 的终端不是 TTY，交互提示无法可靠应答。已验证：在 pws
   - `--min-silence`：最短静音秒数，默认 `0.5`
   - `--padding`：语音首尾保留秒数，默认 `0.1`
   - 负数参数用等号写法：`--threshold=-40dB`
-- `vp fft video-split-copy <video>`（`vp fft vsc`）：无损切割，生成 `<名称>.cut_<起>-<止>s.<ext>`。起止时间只能交互输入，交给用户执行。
+- `vp fft video-split-copy <video>`（`vp fft vsc`）：无损切割（`-c copy` 不重编码）。默认交互式逐段录入起止时间，每段切完询问是否继续；产物在同目录按序号命名 `<名称>_01.<ext>`、`_02.<ext>`…。也可用 `--start <起> --end <止>` 直接切单段（`--json` 模式必须用这种写法）。
 
 ### VTT 字幕 `vp vtt`
 
