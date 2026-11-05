@@ -120,17 +120,21 @@ export default class BupUpload extends BaseCommand {
     this.log(`开始上传 ${videoPaths.length} 个文件到B站...`)
     // spawn 在 Windows 下不会从 cwd 选项解析可执行文件, 必须用绝对路径
     const biliupExePath = join(biliupRDir, 'biliup.exe')
-    // JSON 模式把子进程 stdout(fd 1)重定向到 stderr(fd 2), 保证 stdout 只留结果 JSON
+    // JSON 模式下静默 biliup 全部输出(stdout/stderr 都 pipe), 保证 stdout 只留结果 JSON; 失败时从 stderr 尾部提取关键信息
+    const isJson = this.jsonEnabled()
     const spawnResult = spawnSync(biliupExePath, biliupArguments, {
       cwd: biliupRDir,
-      stdio: this.jsonEnabled() ? ['inherit', 2, 'inherit'] : 'inherit',
+      stdio: isJson ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       shell: false,
+      encoding: 'utf8',
     })
     if (spawnResult.error !== undefined) {
       this.error(`biliup 启动失败: ${spawnResult.error.message}`)
     }
     if (spawnResult.status !== 0) {
-      this.error(`投稿失败, biliup 退出码: ${spawnResult.status}`)
+      const tailSnippet = isJson ? extractTailLines(spawnResult.stderr, 5) : ''
+      const reason = tailSnippet.length > 0 ? `\n${tailSnippet}` : ''
+      this.error(`投稿失败, biliup 退出码: ${spawnResult.status}${reason}`)
     }
     this.log('投稿完成')
     // #endregion
@@ -219,4 +223,13 @@ export default class BupUpload extends BaseCommand {
       delete preset.uploadOptions.dtime
     }
   }
+}
+
+// 从多行文本中提取尾部 N 行, 用于在静默模式下失败时展示关键错误信息
+function extractTailLines(text: string | undefined, lineCount: number): string {
+  if (!text) {
+    return ''
+  }
+  const lines = text.trim().split(/\r?\n/)
+  return lines.slice(-lineCount).join('\n')
 }
