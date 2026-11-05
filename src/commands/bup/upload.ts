@@ -21,6 +21,12 @@ import {selectFile} from '../../lib/vtt/select-file.js'
 // 常见视频扩展名, 交互选择时据此过滤当前目录文件
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.flv', '.webm', '.ts', '.mov', '.avi', '.m4v']
 
+// biliup 投稿回执(biliup 不输出结构化结果, 从其日志的 ResponseData 调试文本中解析)
+export interface BiliupUploadResult {
+  aid?: string
+  bvid?: string
+}
+
 export default class BupUpload extends BaseCommand {
   static aliases = ['bup:up']
   // 允许多个位置参数(多P投稿), 通过 argv 收集
@@ -57,7 +63,7 @@ export default class BupUpload extends BaseCommand {
     fromYaml: Flags.string({char: 'f', description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
   }
 
-  public async run(): Promise<{presetPath: string; uploadOptions: BupUploadOptions; videoPaths: string[]}> {
+  public async run(): Promise<{presetPath: string; uploadOptions: BupUploadOptions; uploadResult?: BiliupUploadResult; videoPaths: string[]}> {
     const {argv, flags} = await this.parse(BupUpload)
 
     const biliupRDir = ToolConfigManager.fromConfigDir(this.config.configDir).getBiliupRDir()
@@ -116,30 +122,37 @@ export default class BupUpload extends BaseCommand {
     this.ensureBupServerRunning(resolve(biliupRDir))
     // #endregion
 
-    // #region 前台执行上传(继承 stdio 展示 biliup 原生进度, cwd 指向 biliupR 目录以读取 cookies.json)
+    // #region 前台执行上传(JSON 模式静默 biliup 输出并解析投稿回执, 交互模式继承 stdio 展示原生进度)
     this.log(`开始上传 ${videoPaths.length} 个文件到B站...`)
+    const uploadResult = this.executeBiliupUpload(biliupRDir, biliupArguments)
+    // #endregion
+
+    return {presetPath, uploadOptions, uploadResult, videoPaths}
+  }
+
+  // 执行 biliup 上传子进程: JSON 模式 pipe 捕获全部输出保证 stdout 只留结果 JSON, 失败时从输出尾部提取关键信息;
+  // JSON 模式返回从 biliup 日志解析的投稿回执(aid/bvid), 交互模式输出直接透传给用户, 返回 undefined
+  private executeBiliupUpload(biliupRDir: string, biliupArguments: string[]): BiliupUploadResult | undefined {
+    const isJson = this.jsonEnabled()
     // spawn 在 Windows 下不会从 cwd 选项解析可执行文件, 必须用绝对路径
     const biliupExePath = join(biliupRDir, 'biliup.exe')
-    // JSON 模式下静默 biliup 全部输出(stdout/stderr 都 pipe), 保证 stdout 只留结果 JSON; 失败时从 stderr 尾部提取关键信息
-    const isJson = this.jsonEnabled()
     const spawnResult = spawnSync(biliupExePath, biliupArguments, {
       cwd: biliupRDir,
       stdio: isJson ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       shell: false,
       encoding: 'utf8',
     })
+    const biliupOutput = isJson ? `${spawnResult.stdout ?? ''}\n${spawnResult.stderr ?? ''}` : ''
     if (spawnResult.error !== undefined) {
       this.error(`biliup 启动失败: ${spawnResult.error.message}`)
     }
     if (spawnResult.status !== 0) {
-      const tailSnippet = isJson ? extractTailLines(spawnResult.stderr, 5) : ''
+      const tailSnippet = isJson ? extractTailLines(biliupOutput, 5) : ''
       const reason = tailSnippet.length > 0 ? `\n${tailSnippet}` : ''
       this.error(`投稿失败, biliup 退出码: ${spawnResult.status}${reason}`)
     }
     this.log('投稿完成')
-    // #endregion
-
-    return {presetPath, uploadOptions, videoPaths}
+    return isJson ? parseBiliupUploadResult(biliupOutput) : undefined
   }
 
   // 上传前确保 bup server 已启动: 未启动则后台拉起并等待就绪; 投稿不依赖 server, 启动失败仅警告不阻塞
@@ -232,4 +245,20 @@ function extractTailLines(text: string | undefined, lineCount: number): string {
   }
   const lines = text.trim().split(/\r?\n/)
   return lines.slice(-lineCount).join('\n')
+}
+
+// 从 biliup 日志文本解析投稿回执, 匹配 Rust 调试格式:
+// ResponseData { code: 0, data: Some(Object {"aid": Number(117562465589427), "bvid": String("BV1ri4462EJw")}), ... }
+// 多P投稿只有一条回执(合并为同一个稿件), 解析不到时返回空对象表示回执缺失
+export function parseBiliupUploadResult(logText: string): BiliupUploadResult {
+  const uploadResult: BiliupUploadResult = {}
+  const aidMatch = logText.match(/"aid":\s*Number\((\d+)\)/)
+  const bvidMatch = logText.match(/"bvid":\s*String\("([^"]+)"\)/)
+  if (aidMatch !== null) {
+    uploadResult.aid = aidMatch[1]
+  }
+  if (bvidMatch !== null) {
+    uploadResult.bvid = bvidMatch[1]
+  }
+  return uploadResult
 }
