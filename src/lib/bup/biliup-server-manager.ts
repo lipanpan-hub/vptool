@@ -42,6 +42,9 @@ export type BiliupServerStartResult = {
 
 // 服务可执行文件名
 const SERVER_EXE_NAME = 'biliup.exe'
+// 服务默认监听端口与绑定地址(vp bup server 与上传前自动拉起共用)
+export const SERVER_DEFAULT_PORT = 19_159
+export const SERVER_DEFAULT_BIND = '127.0.0.1'
 // 启动后等待就绪的超时时间(web 服务启动较快, 预留余量即可)
 const READY_TIMEOUT_MS = 30_000
 // 就绪探测轮询间隔

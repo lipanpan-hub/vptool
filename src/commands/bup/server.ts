@@ -2,7 +2,7 @@ import {Flags} from '@oclif/core'
 import {resolve} from 'node:path'
 
 import {BaseCommand} from '../../lib/base-command.js'
-import {BiliupServerManager} from '../../lib/bup/biliup-server-manager.js'
+import {BiliupServerManager, SERVER_DEFAULT_BIND, SERVER_DEFAULT_PORT} from '../../lib/bup/biliup-server-manager.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 
 export default class BupServer extends BaseCommand {
@@ -15,8 +15,8 @@ export default class BupServer extends BaseCommand {
   ]
 
   static flags = {
-    port: Flags.integer({description: '服务监听端口', default: 19_159}),
-    bind: Flags.string({description: '服务绑定地址', default: '127.0.0.1'}),
+    port: Flags.integer({description: '服务监听端口', default: SERVER_DEFAULT_PORT}),
+    bind: Flags.string({description: '服务绑定地址', default: SERVER_DEFAULT_BIND}),
   }
 
   public async run(): Promise<{baseUrl: string; biliupRDir: string; isAlreadyRunning: boolean; logFilePath: string}> {

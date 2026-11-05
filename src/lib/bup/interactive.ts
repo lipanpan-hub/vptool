@@ -364,7 +364,7 @@ export interface BupUploadOptions {
 
 /**
  * 交互式补全 upload 的投稿参数: 命令行已提供的值原样沿用, 仅对未提供的逐项提问。
- * 各提问均有默认项或允许回车跳过; 延时发布例外——回车取默认(+5 小时后发布), 输入 - 才不延时。
+ * 各提问均有默认项或允许回车跳过; 延时发布不提问, 默认立即发布, 仅当 --dtime 或预设显式指定才延时。
  * 自测时经 prompts.inject() 注入答案(全局队列按提问顺序消费)。
  */
 export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promise<BupUploadOptions> {
@@ -374,7 +374,6 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
   const tag = flags.tag ?? (await askOptionalText('视频标签, 逗号分隔(回车跳过):'))
   const cover = flags.cover ?? (await askCoverPath())
   const dynamic = flags.dynamic ?? (await askOptionalText('空间动态内容(回车跳过):'))
-  const dtime = flags.dtime ?? (await askDelayTime())
   // #endregion
 
   // #region 作品类型: 决定是否追问转载来源
@@ -401,15 +400,8 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
   }
   // #endregion
 
-  // #region 上传线路与提交接口: 首项均为"不指定"直通 biliup 默认行为
-  let line = flags.line
-  if (line === undefined) {
-    const selected = await askSelect<string>('上传线路:', [
-      {title: '自动(不指定线路)', value: ''},
-      ...UPLOAD_LINES.map((lineName) => ({title: lineName, value: lineName})),
-    ], 0)
-    line = selected === '' ? undefined : selected
-  }
+  // #region 提交接口: 首项为"默认(不指定)"直通 biliup 默认行为; 上传线路不提问, 默认自动选择, 仅命令行/预设显式指定才生效
+  const line = flags.line
 
   let submit = flags.submit
   if (submit === undefined) {
@@ -425,7 +417,8 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
 
   const limit = flags.limit ?? (await askNumberWithDefault('单文件最大并发数', 3))
 
-  return {title, desc, tag, tid, copyright, source, cover, line, limit, submit, dynamic, dtime}
+  // dtime 不做交互提问: 未显式指定(--dtime/预设)即立即发布
+  return {title, desc, tag, tid, copyright, source, cover, line, limit, submit, dynamic, dtime: flags.dtime}
 }
 
 /**
@@ -559,47 +552,4 @@ export function parseDelayTime(text: string, now: Date = new Date()): number {
   return Math.floor(parsedDate.getTime() / 1000)
 }
 
-/** dtime 交互输入校验: 格式与时限不合法时返回错误消息, 合法返回 true */
-function validateDelayTime(inputValue: string): string | true {
-  try {
-    parseDelayTime(inputValue)
-    return true
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
-  }
-}
 
-// 两位数补零(延时时间的月/日/时/分格式化用)
-const pad2 = (num: number) => String(num).padStart(2, '0')
-
-/** 默认延时时刻: 当前时间 + 5 小时(留出 B 站 >4 小时规则的余量), 格式化为 YYYY-MM-DD HH:mm; 单独导出便于测试 */
-export function buildDefaultDelayTime(now: Date = new Date()): string {
-  const defaultDate = new Date(now.getTime() + 5 * 3600 * 1000)
-  return `${defaultDate.getFullYear()}-${pad2(defaultDate.getMonth() + 1)}-${pad2(defaultDate.getDate())} ${pad2(defaultDate.getHours())}:${pad2(defaultDate.getMinutes())}`
-}
-
-/**
- * 延时发布时间交互输入: 默认值(+5 小时后)经 initial 预填, 回车即取默认或在其基础上修改;
- * 输入 -(或清空)表示不延时; 其余按 YYYY-MM-DD HH:mm 校验, 非法时要求重填。
- */
-async function askDelayTime(): Promise<string | undefined> {
-  const defaultDelayText = buildDefaultDelayTime()
-  const response = await prompts({
-    initial: defaultDelayText,
-    message: `延时发布时间(回车取默认 ${defaultDelayText}, 输入 - 不延时):`,
-    name: 'value',
-    type: 'text',
-    validate: (inputValue: string) => {
-      const trimmedText = inputValue.trim()
-      if (trimmedText === '' || trimmedText === '-') {
-        return true
-      }
-      return validateDelayTime(trimmedText)
-    },
-  })
-  if (response.value === undefined) {
-    throw new Error('已取消')
-  }
-  const trimmedText = (response.value as string).trim()
-  return trimmedText === '' || trimmedText === '-' ? undefined : trimmedText
-}

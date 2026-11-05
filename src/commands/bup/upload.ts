@@ -14,6 +14,7 @@ import {
   type BupUploadOptions,
 } from '../../lib/bup/interactive.js'
 import {UPLOAD_PRESET_FILENAME, loadUploadPreset, mergeUploadSources, saveUploadPreset, type UploadPreset} from '../../lib/bup/upload-preset.js'
+import {BiliupServerManager, SERVER_DEFAULT_BIND, SERVER_DEFAULT_PORT} from '../../lib/bup/biliup-server-manager.js'
 import {ToolConfigManager} from '../../lib/config/index.js'
 import {selectFile} from '../../lib/vtt/select-file.js'
 
@@ -47,12 +48,12 @@ export default class BupUpload extends BaseCommand {
     copyright: Flags.integer({description: '1-自制 2-转载(未传时交互选择, 交互默认 1)'}),
     source: Flags.string({description: '转载来源(copyright=2 时使用)'}),
     cover: Flags.string({description: '封面图片路径'}),
-    line: Flags.string({description: `上传线路(${UPLOAD_LINES.join('/')})`}),
+    line: Flags.string({description: `上传线路(${UPLOAD_LINES.join('/')}; 缺省自动选择)`}),
     limit: Flags.integer({description: '单文件最大并发数(未传时交互输入, 交互默认 3)'}),
     submit: Flags.string({description: '提交接口', options: ['app', 'web', 'b-cut-android']}),
     dynamic: Flags.string({description: '空间动态内容'}),
-    // 延时发布: 格式 YYYY-MM-DD HH:mm(本地时区), B站要求距提交需大于 4 小时, 组装参数时统一转秒级时间戳
-    dtime: Flags.string({description: '延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时)'}),
+    // 延时发布: 格式 YYYY-MM-DD HH:mm(本地时区), B站要求距提交需大于 4 小时, 组装参数时统一转秒级时间戳; 不传即立即发布
+    dtime: Flags.string({description: '延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时; 缺省立即发布)'}),
     fromYaml: Flags.string({char: 'f', description: `从 yaml 预设导入视频路径与投稿参数(缺项继续交互), 如 --from-yaml ${UPLOAD_PRESET_FILENAME}`}),
   }
 
@@ -95,7 +96,7 @@ export default class BupUpload extends BaseCommand {
     // #endregion
 
     // #region 组装 biliup 参数(值为 undefined 的项不传, 沿用 biliup 自身默认行为)
-    // 延时发布时间在此统一转秒级时间戳(交互/命令行/JSON 三条来源的兜底校验点)
+    // 延时发布时间在此统一转秒级时间戳(命令行/预设/JSON 三条来源的兜底校验点; 未提供即立即发布)
     const dtimeSeconds = this.resolveDelayTimeSeconds(uploadOptions.dtime)
     const biliupArguments = ['upload', ...videoPaths]
     if (uploadOptions.title !== undefined) biliupArguments.push('--title', uploadOptions.title)
@@ -109,6 +110,10 @@ export default class BupUpload extends BaseCommand {
     if (uploadOptions.submit !== undefined) biliupArguments.push('--submit', uploadOptions.submit)
     if (uploadOptions.dynamic !== undefined) biliupArguments.push('--dynamic', uploadOptions.dynamic)
     if (dtimeSeconds !== undefined) biliupArguments.push('--dtime', String(dtimeSeconds))
+    // #endregion
+
+    // #region 自动确保 bup server 已启动(未启动则后台拉起并等待就绪; 投稿不依赖 server, 启动失败仅警告不阻塞)
+    this.ensureBupServerRunning(resolve(biliupRDir))
     // #endregion
 
     // #region 前台执行上传(继承 stdio 展示 biliup 原生进度, cwd 指向 biliupR 目录以读取 cookies.json)
@@ -131,6 +136,20 @@ export default class BupUpload extends BaseCommand {
     // #endregion
 
     return {presetPath, uploadOptions, videoPaths}
+  }
+
+  // 上传前确保 bup server 已启动: 未启动则后台拉起并等待就绪; 投稿不依赖 server, 启动失败仅警告不阻塞
+  private async ensureBupServerRunning(biliupRDir: string): Promise<void> {
+    const serverManager = new BiliupServerManager({biliupRDir, port: SERVER_DEFAULT_PORT, bind: SERVER_DEFAULT_BIND})
+    try {
+      serverManager.checkPrerequisites()
+      const startResult = await serverManager.start()
+      this.log(startResult.kind === 'already-running'
+        ? `bup server 已在运行, 复用现有进程: ${serverManager.baseUrl}`
+        : `bup server 已自动启动: ${serverManager.baseUrl}`)
+    } catch (error) {
+      this.warn(`bup server 自动启动失败(不影响投稿流程): ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   // 补全投稿参数: 交互模式逐项提问; JSON 模式不提问, 转载必须显式给来源, 其余未提供项取交互默认值
@@ -178,7 +197,7 @@ export default class BupUpload extends BaseCommand {
     }
   }
 
-  // 预设中的延时发布时间是绝对时刻, 复用时多半已过期; 不可用(过期/旧版裸时间戳/格式错)则丢弃回退交互重问
+  // 预设中的延时发布时间是绝对时刻, 复用时多半已过期; 不可用(过期/旧版裸时间戳/格式错)则丢弃, 默认立即发布
   private discardUnusablePresetDelayTime(preset: UploadPreset): void {
     // 运行时可能是旧版预设残留的 number 时间戳, 故按 unknown 收窄
     const presetDtime: unknown = preset.uploadOptions.dtime
@@ -187,7 +206,7 @@ export default class BupUpload extends BaseCommand {
     }
 
     if (typeof presetDtime !== 'string') {
-      this.warn(`预设中的延时发布时间为旧版时间戳格式, 已忽略: ${presetDtime}`)
+      this.warn(`预设中的延时发布时间为旧版时间戳格式, 已忽略, 将立即发布: ${presetDtime}`)
       delete preset.uploadOptions.dtime
       return
     }
@@ -196,7 +215,7 @@ export default class BupUpload extends BaseCommand {
       parseDelayTime(presetDtime)
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
-      this.warn(`预设中的延时发布时间不可用(${reason}), 将重新询问`)
+      this.warn(`预设中的延时发布时间不可用(${reason}), 已忽略, 将立即发布`)
       delete preset.uploadOptions.dtime
     }
   }
