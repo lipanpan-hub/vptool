@@ -327,8 +327,343 @@ export const BILI_TID_CHOICES: {title: string, value: number}[] = BILI_TID_ZONES
   ...zone.subs.map((sub) => ({title: `${sub.tid} ${sub.name}(${zone.zoneName})`, value: sub.tid})),
 ])
 
+// B 站新版分区表(tid_v2, 全量大区 + 二级分区), 按官方文档顺序排列; 校对自 bilibili-API-collect「视频分区一览 (v2)」(截至 2025-04)
+// 新版分区是独立体系(主分区 1001+/子分区 2001+), 与旧版 tid 不互通; 未公开上线的"神秘学"分区不收录
+const BILI_TID_V2_ZONES: BiliTidZone[] = [
+  {
+    zoneName: '动画', mainTid: 1005, subs: [
+      {tid: 2037, name: '同人动画'},
+      {tid: 2038, name: '模玩周边'},
+      {tid: 2039, name: 'cosplay'},
+      {tid: 2040, name: '二次元线下'},
+      {tid: 2041, name: '动漫剪辑'},
+      {tid: 2042, name: '动漫评论'},
+      {tid: 2043, name: '动漫速读'},
+      {tid: 2044, name: '动漫配音'},
+      {tid: 2045, name: '动漫资讯'},
+      {tid: 2046, name: '网文解读'},
+      {tid: 2047, name: '虚拟up主'},
+      {tid: 2048, name: '特摄'},
+      {tid: 2049, name: '布袋戏'},
+      {tid: 2050, name: '漫画·动态漫'},
+      {tid: 2051, name: '广播剧'},
+      {tid: 2052, name: '动漫reaction'},
+      {tid: 2053, name: '动漫教学'},
+      {tid: 2054, name: '二次元其他'},
+    ],
+  },
+  {
+    zoneName: '游戏', mainTid: 1008, subs: [
+      {tid: 2064, name: '单人RPG游戏'},
+      {tid: 2065, name: 'MMORPG游戏'},
+      {tid: 2066, name: '单机主机类游戏'},
+      {tid: 2067, name: 'SLG游戏'},
+      {tid: 2068, name: '回合制策略游戏'},
+      {tid: 2069, name: '即时策略游戏'},
+      {tid: 2070, name: 'MOBA游戏'},
+      {tid: 2071, name: '射击游戏'},
+      {tid: 2072, name: '体育竞速游戏'},
+      {tid: 2073, name: '动作竞技游戏'},
+      {tid: 2074, name: '音游舞游'},
+      {tid: 2075, name: '模拟经营游戏'},
+      {tid: 2076, name: '女性向游戏'},
+      {tid: 2077, name: '休闲小游戏'},
+      {tid: 2078, name: '沙盒类'},
+      {tid: 2079, name: '其他游戏'},
+    ],
+  },
+  {
+    zoneName: '鬼畜', mainTid: 1007, subs: [
+      {tid: 2059, name: '鬼畜调教'},
+      {tid: 2060, name: '鬼畜剧场'},
+      {tid: 2061, name: '人力VOCALOID'},
+      {tid: 2062, name: '音MAD'},
+      {tid: 2063, name: '鬼畜综合'},
+    ],
+  },
+  {
+    zoneName: '音乐', mainTid: 1003, subs: [
+      {tid: 2016, name: '原创音乐'},
+      {tid: 2017, name: 'MV'},
+      {tid: 2018, name: '音乐现场'},
+      {tid: 2019, name: '乐迷饭拍'},
+      {tid: 2020, name: '翻唱'},
+      {tid: 2021, name: '演奏'},
+      {tid: 2022, name: 'VOCALOID'},
+      {tid: 2023, name: 'AI音乐'},
+      {tid: 2024, name: '电台·歌单'},
+      {tid: 2025, name: '音乐教学'},
+      {tid: 2026, name: '乐评盘点'},
+      {tid: 2027, name: '音乐综合'},
+    ],
+  },
+  {
+    zoneName: '舞蹈', mainTid: 1004, subs: [
+      {tid: 2028, name: '宅舞'},
+      {tid: 2029, name: '街舞'},
+      {tid: 2030, name: '颜值·网红舞'},
+      {tid: 2031, name: '明星舞蹈'},
+      {tid: 2032, name: '国风舞蹈'},
+      {tid: 2033, name: '舞蹈教学'},
+      {tid: 2034, name: '芭蕾舞'},
+      {tid: 2035, name: 'wota艺'},
+      {tid: 2036, name: '舞蹈综合'},
+    ],
+  },
+  {
+    zoneName: '影视', mainTid: 1001, subs: [
+      {tid: 2001, name: '影视解读'},
+      {tid: 2002, name: '影视剪辑'},
+      {tid: 2003, name: '影视资讯'},
+      {tid: 2004, name: '影视正片搬运'},
+      {tid: 2005, name: '短剧短片'},
+      {tid: 2006, name: 'AI影视'},
+      {tid: 2007, name: '影视reaction'},
+      {tid: 2008, name: '影视综合'},
+    ],
+  },
+  {
+    zoneName: '娱乐', mainTid: 1002, subs: [
+      {tid: 2009, name: '娱乐评论'},
+      {tid: 2010, name: '明星剪辑'},
+      {tid: 2011, name: '娱乐饭拍现场'},
+      {tid: 2012, name: '娱乐资讯'},
+      {tid: 2013, name: '娱乐reaction'},
+      {tid: 2014, name: '娱乐综艺正片'},
+      {tid: 2015, name: '娱乐综合'},
+    ],
+  },
+  {
+    zoneName: '知识', mainTid: 1010, subs: [
+      {tid: 2084, name: '应试教育'},
+      {tid: 2085, name: '非应试语言学习'},
+      {tid: 2086, name: '大学专业知识'},
+      {tid: 2087, name: '商业财经'},
+      {tid: 2088, name: '社会观察'},
+      {tid: 2089, name: '时政解读'},
+      {tid: 2090, name: '人文历史'},
+      {tid: 2091, name: '设计艺术'},
+      {tid: 2092, name: '心理杂谈'},
+      {tid: 2093, name: '职场发展'},
+      {tid: 2094, name: '科学科普'},
+      {tid: 2095, name: '其他知识杂谈'},
+    ],
+  },
+  {
+    zoneName: '科技数码', mainTid: 1012, subs: [
+      {tid: 2099, name: '电脑'},
+      {tid: 2100, name: '手机'},
+      {tid: 2101, name: '平板电脑'},
+      {tid: 2102, name: '摄影摄像'},
+      {tid: 2103, name: '工程机械'},
+      {tid: 2104, name: '自制发明设备'},
+      {tid: 2105, name: '科技数码综合'},
+    ],
+  },
+  {
+    zoneName: '资讯', mainTid: 1009, subs: [
+      {tid: 2080, name: '时政资讯'},
+      {tid: 2081, name: '海外资讯'},
+      {tid: 2082, name: '社会资讯'},
+      {tid: 2083, name: '综合资讯'},
+    ],
+  },
+  {
+    zoneName: '美食', mainTid: 1020, subs: [
+      {tid: 2149, name: '美食制作'},
+      {tid: 2150, name: '美食探店'},
+      {tid: 2151, name: '美食测评'},
+      {tid: 2152, name: '美食记录'},
+      {tid: 2153, name: '美食综合'},
+    ],
+  },
+  {
+    zoneName: '小剧场', mainTid: 1021, subs: [
+      {tid: 2154, name: '剧情演绎'},
+      {tid: 2155, name: '语言类小剧场'},
+      {tid: 2156, name: 'UP主小综艺'},
+      {tid: 2157, name: '街头采访'},
+    ],
+  },
+  {
+    zoneName: '汽车', mainTid: 1013, subs: [
+      {tid: 2106, name: '汽车测评'},
+      {tid: 2107, name: '汽车文化'},
+      {tid: 2108, name: '汽车生活'},
+      {tid: 2109, name: '汽车技术'},
+      {tid: 2110, name: '汽车综合'},
+    ],
+  },
+  {
+    zoneName: '时尚美妆', mainTid: 1014, subs: [
+      {tid: 2111, name: '美妆'},
+      {tid: 2112, name: '护肤'},
+      {tid: 2113, name: '仿装cos'},
+      {tid: 2114, name: '鞋服穿搭'},
+      {tid: 2115, name: '箱包配饰'},
+      {tid: 2116, name: '珠宝首饰'},
+      {tid: 2117, name: '三坑'},
+      {tid: 2118, name: '时尚解读'},
+      {tid: 2119, name: '时尚综合'},
+    ],
+  },
+  {
+    zoneName: '体育运动', mainTid: 1018, subs: [
+      {tid: 2133, name: '潮流运动'},
+      {tid: 2134, name: '足球'},
+      {tid: 2135, name: '篮球'},
+      {tid: 2136, name: '跑步'},
+      {tid: 2137, name: '武术'},
+      {tid: 2138, name: '格斗'},
+      {tid: 2139, name: '羽毛球'},
+      {tid: 2140, name: '体育资讯'},
+      {tid: 2141, name: '体育赛事'},
+      {tid: 2142, name: '体育综合'},
+    ],
+  },
+  {
+    zoneName: '动物', mainTid: 1024, subs: [
+      {tid: 2167, name: '猫'},
+      {tid: 2168, name: '狗'},
+      {tid: 2169, name: '小宠异宠'},
+      {tid: 2170, name: '野生动物·动物解说科普'},
+      {tid: 2171, name: '动物综合·二创'},
+    ],
+  },
+  {
+    zoneName: 'vlog', mainTid: 1029, subs: [
+      {tid: 2194, name: '中外生活vlog'},
+      {tid: 2195, name: '学生vlog'},
+      {tid: 2196, name: '职业vlog'},
+      {tid: 2197, name: '其他vlog'},
+    ],
+  },
+  {
+    zoneName: '绘画', mainTid: 1006, subs: [
+      {tid: 2055, name: '二次元绘画'},
+      {tid: 2056, name: '非二次元绘画'},
+      {tid: 2057, name: '绘画学习'},
+      {tid: 2058, name: '绘画综合'},
+    ],
+  },
+  {
+    zoneName: '人工智能', mainTid: 1011, subs: [
+      {tid: 2096, name: 'AI学习'},
+      {tid: 2097, name: 'AI资讯'},
+      {tid: 2098, name: 'AI杂谈'},
+    ],
+  },
+  {
+    zoneName: '家装房产', mainTid: 1015, subs: [
+      {tid: 2120, name: '买房租房'},
+      {tid: 2121, name: '家庭装修'},
+      {tid: 2122, name: '家居展示'},
+      {tid: 2123, name: '家用电器'},
+    ],
+  },
+  {
+    zoneName: '户外潮流', mainTid: 1016, subs: [
+      {tid: 2124, name: '露营'},
+      {tid: 2125, name: '徒步'},
+      {tid: 2126, name: '户外探秘'},
+      {tid: 2127, name: '户外综合'},
+    ],
+  },
+  {
+    zoneName: '健身', mainTid: 1017, subs: [
+      {tid: 2128, name: '健身科普'},
+      {tid: 2129, name: '健身跟练教学'},
+      {tid: 2130, name: '健身记录'},
+      {tid: 2131, name: '健身身材展示'},
+      {tid: 2132, name: '健身综合'},
+    ],
+  },
+  {
+    zoneName: '手工', mainTid: 1019, subs: [
+      {tid: 2143, name: '文具手帐'},
+      {tid: 2144, name: '轻手作'},
+      {tid: 2145, name: '传统手工艺'},
+      {tid: 2146, name: '解压手工'},
+      {tid: 2147, name: 'DIY玩具'},
+      {tid: 2148, name: '其他手工'},
+    ],
+  },
+  {
+    zoneName: '旅游出行', mainTid: 1022, subs: [
+      {tid: 2158, name: '旅游记录'},
+      {tid: 2159, name: '旅游攻略'},
+      {tid: 2160, name: '城市出行'},
+      {tid: 2161, name: '公共交通'},
+    ],
+  },
+  {
+    zoneName: '三农', mainTid: 1023, subs: [
+      {tid: 2162, name: '农村种植'},
+      {tid: 2163, name: '赶海捕鱼'},
+      {tid: 2164, name: '打野采摘'},
+      {tid: 2165, name: '农业技术'},
+      {tid: 2166, name: '农村生活'},
+    ],
+  },
+  {
+    zoneName: '亲子', mainTid: 1025, subs: [
+      {tid: 2172, name: '孕产护理'},
+      {tid: 2173, name: '婴幼护理'},
+      {tid: 2174, name: '儿童才艺'},
+      {tid: 2175, name: '萌娃'},
+      {tid: 2176, name: '亲子互动'},
+      {tid: 2177, name: '亲子教育'},
+      {tid: 2178, name: '亲子综合'},
+    ],
+  },
+  {
+    zoneName: '健康', mainTid: 1026, subs: [
+      {tid: 2179, name: '健康科普'},
+      {tid: 2180, name: '养生'},
+      {tid: 2181, name: '两性知识'},
+      {tid: 2182, name: '心理健康'},
+      {tid: 2183, name: '助眠视频ASMR'},
+      {tid: 2184, name: '医疗保健综合'},
+    ],
+  },
+  {
+    zoneName: '情感', mainTid: 1027, subs: [
+      {tid: 2185, name: '家庭关系'},
+      {tid: 2186, name: '恋爱关系'},
+      {tid: 2187, name: '人际关系'},
+      {tid: 2188, name: '自我成长'},
+    ],
+  },
+  {
+    zoneName: '生活兴趣', mainTid: 1030, subs: [
+      {tid: 2198, name: '休闲玩乐'},
+      {tid: 2199, name: '线下演出'},
+      {tid: 2200, name: '文玩文创'},
+      {tid: 2201, name: '潮玩玩具'},
+      {tid: 2202, name: '兴趣综合'},
+    ],
+  },
+  {
+    zoneName: '生活经验', mainTid: 1031, subs: [
+      {tid: 2203, name: '生活技能'},
+      {tid: 2204, name: '办事流程'},
+      {tid: 2205, name: '婚嫁'},
+    ],
+  },
+]
+
+// 新版分区选择项: 摊平方式与旧版一致, 单独导出便于测试
+export const BILI_TID_V2_CHOICES: {title: string, value: number}[] = BILI_TID_V2_ZONES.flatMap((zone) => [
+  {title: `${zone.mainTid} ${zone.zoneName}(主分区)`, value: zone.mainTid},
+  ...zone.subs.map((sub) => ({title: `${sub.tid} ${sub.name}(${zone.zoneName})`, value: sub.tid})),
+])
+
 // "手动输入分区 id"选项的哨兵值, 命中后追问数字输入
 const MANUAL_TID_VALUE = -1
+
+// 新版分区(tid_v2)选择项的哨兵值: -1 = 不设置(不向 biliup 传该字段), -2 = 命中后追问数字输入
+const SKIP_TID_V2_VALUE = -1
+const MANUAL_TID_V2_VALUE = -2
 
 /** upload 命令 flags 快照(仅含交互涉及的键), 结构与 oclif 解析结果兼容 */
 export interface BupUploadFlagsSnapshot {
@@ -336,6 +671,7 @@ export interface BupUploadFlagsSnapshot {
   desc?: string
   tag?: string
   tid?: number
+  tidV2?: number
   copyright?: number
   source?: string
   cover?: string
@@ -352,6 +688,7 @@ export interface BupUploadOptions {
   desc?: string
   tag?: string
   tid: number
+  tidV2?: number
   copyright: number
   source?: string
   cover?: string
@@ -400,6 +737,22 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
   }
   // #endregion
 
+  // #region 新版分区 tid_v2: 可选项, 首项"默认(不设置)"即不向 biliup 传该字段, 也可全表搜索或手动输入 id
+  let tidV2 = flags.tidV2
+  if (tidV2 === undefined) {
+    const selectedV2 = await askSelectWithSearch<number>('新版分区 tid_v2(输入分区名/id 过滤, 首项跳过):', [
+      {title: '默认(不设置)', value: SKIP_TID_V2_VALUE},
+      ...BILI_TID_V2_CHOICES,
+      {title: '手动输入分区 id…', value: MANUAL_TID_V2_VALUE},
+    ])
+    if (selectedV2 === MANUAL_TID_V2_VALUE) {
+      tidV2 = await askRequiredNumber('分区 id:')
+    } else if (selectedV2 !== SKIP_TID_V2_VALUE) {
+      tidV2 = selectedV2
+    }
+  }
+  // #endregion
+
   // #region 提交接口: 首项为"默认(不指定)"直通 biliup 默认行为; 上传线路不提问, 默认自动选择, 仅命令行/预设显式指定才生效
   const line = flags.line
 
@@ -418,7 +771,7 @@ export async function promptUploadOptions(flags: BupUploadFlagsSnapshot): Promis
   const limit = flags.limit ?? (await askNumberWithDefault('单文件最大并发数', 3))
 
   // dtime 不做交互提问: 未显式指定(--dtime/预设)即立即发布
-  return {title, desc, tag, tid, copyright, source, cover, line, limit, submit, dynamic, dtime: flags.dtime}
+  return {title, desc, tag, tid, tidV2, copyright, source, cover, line, limit, submit, dynamic, dtime: flags.dtime}
 }
 
 /**
@@ -438,6 +791,7 @@ export function fillUploadOptionsWithDefaults(flags: BupUploadFlagsSnapshot): Bu
     submit: flags.submit,
     tag: flags.tag,
     tid: flags.tid ?? 171,
+    tidV2: flags.tidV2,
     title: flags.title,
   }
 }

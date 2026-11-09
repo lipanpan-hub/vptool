@@ -39,7 +39,7 @@ export default class BupUpload extends BaseCommand {
   static description = '上传本地视频投稿到B站(调用配置目录下的 biliup.exe, 登录态取该目录 cookies.json); 未提供的参数会交互式提问收集'
 
   static examples = [
-    '<%= config.bin %> <%= command.id %> video.mp4 --title 标题 --tag 标签1,标签2 --tid 171',
+    '<%= config.bin %> <%= command.id %> video.mp4 --title 标题 --tag 标签1,标签2 --tid 171 --tid-v2 1020',
     '<%= config.bin %> <%= command.id %> part1.mp4 part2.mp4 --title 多P标题',
     '<%= config.bin %> <%= command.id %> --from-yaml bup-upload.yml',
     '<%= config.bin %> <%= command.id %>',
@@ -51,6 +51,7 @@ export default class BupUpload extends BaseCommand {
     desc: Flags.string({description: '视频简介'}),
     tag: Flags.string({description: '视频标签, 逗号分隔多个'}),
     tid: Flags.integer({description: '投稿分区 id(未传时交互选择, 交互默认 171)'}),
+    tidV2: Flags.integer({description: '新版投稿分区 id tid_v2(未传时交互选择, 可选跳过; 不设置时不提交该字段)'}),
     copyright: Flags.integer({description: '1-自制 2-转载(未传时交互选择, 交互默认 1)'}),
     source: Flags.string({description: '转载来源(copyright=2 时使用)'}),
     cover: Flags.string({description: '封面图片路径'}),
@@ -109,6 +110,7 @@ export default class BupUpload extends BaseCommand {
     if (uploadOptions.desc !== undefined) biliupArguments.push('--desc', uploadOptions.desc)
     if (uploadOptions.tag !== undefined) biliupArguments.push('--tag', uploadOptions.tag)
     biliupArguments.push('--tid', String(uploadOptions.tid), '--copyright', String(uploadOptions.copyright))
+    if (uploadOptions.tidV2 !== undefined) biliupArguments.push('--tid-v2', String(uploadOptions.tidV2))
     if (uploadOptions.source !== undefined) biliupArguments.push('--source', uploadOptions.source)
     if (uploadOptions.cover !== undefined) biliupArguments.push('--cover', uploadOptions.cover)
     if (uploadOptions.line !== undefined) biliupArguments.push('--line', uploadOptions.line)

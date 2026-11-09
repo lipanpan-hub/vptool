@@ -14,6 +14,7 @@
 * [`vp bup sessions`](#vp-bup-sessions)
 * [`vp bup stats`](#vp-bup-stats)
 * [`vp bup status`](#vp-bup-status)
+* [`vp bup stop`](#vp-bup-stop)
 * [`vp bup streamers`](#vp-bup-streamers)
 * [`vp bup up [FILES]`](#vp-bup-up-files)
 * [`vp bup upload [FILES]`](#vp-bup-upload-files)
@@ -332,6 +333,34 @@ EXAMPLES
 
 _See code: [src/commands/bup/status.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/bup/status.ts)_
 
+## `vp bup stop`
+
+停止 biliup web 服务(按监听端口定位进程并终止, 服务目录取配置档案的 biliupRDir 字段)
+
+```
+USAGE
+  $ vp bup stop [--json] [--port <value>]
+
+FLAGS
+  --port=<value>  [default: 19159] 服务监听端口(需与启动时一致)
+
+GLOBAL FLAGS
+  --json  Format output as json.
+
+DESCRIPTION
+  停止 biliup web 服务(按监听端口定位进程并终止, 服务目录取配置档案的 biliupRDir 字段)
+
+ALIASES
+  $ vp bup stop
+
+EXAMPLES
+  $ vp bup stop
+
+  $ vp bup stop --port 19160
+```
+
+_See code: [src/commands/bup/stop.ts](https://github.com/lipanpan-hub/vptool/blob/v0.0.6/src/commands/bup/stop.ts)_
+
 ## `vp bup streamers`
 
 列出 biliup 监控的全部主播及其录制/上传状态
@@ -365,8 +394,8 @@ _See code: [src/commands/bup/streamers.ts](https://github.com/lipanpan-hub/vptoo
 ```
 USAGE
   $ vp bup up [FILES...] [--json] [--title <value>] [--desc <value>] [--tag <value>] [--tid <value>]
-    [--copyright <value>] [--source <value>] [--cover <value>] [--line <value>] [--limit <value>] [--submit
-    app|web|b-cut-android] [--dynamic <value>] [--dtime <value>] [-f <value>]
+    [--tidV2 <value>] [--copyright <value>] [--source <value>] [--cover <value>] [--line <value>] [--limit <value>]
+    [--submit app|web|b-cut-android] [--dynamic <value>] [--dtime <value>] [-f <value>]
 
 ARGUMENTS
   [FILES...]  视频文件路径(可传多个实现多P投稿; 全部省略则交互选择)
@@ -376,15 +405,17 @@ FLAGS
       --copyright=<value>  1-自制 2-转载(未传时交互选择, 交互默认 1)
       --cover=<value>      封面图片路径
       --desc=<value>       视频简介
-      --dtime=<value>      延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时)
+      --dtime=<value>      延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时; 缺省立即发布)
       --dynamic=<value>    空间动态内容
       --limit=<value>      单文件最大并发数(未传时交互输入, 交互默认 3)
-      --line=<value>       上传线路(bldsa/cnbldsa/andsa/atdsa/bda2/cnbd/anbd/atbd/tx/cntx/antx/attx/txa/alia/estx/akbd)
+      --line=<value>       上传线路(bldsa/cnbldsa/andsa/atdsa/bda2/cnbd/anbd/atbd/tx/cntx/antx/attx/txa/alia/estx/akbd;
+                           缺省自动选择)
       --source=<value>     转载来源(copyright=2 时使用)
       --submit=<option>    提交接口
                            <options: app|web|b-cut-android>
       --tag=<value>        视频标签, 逗号分隔多个
       --tid=<value>        投稿分区 id(未传时交互选择, 交互默认 171)
+      --tidV2=<value>      新版投稿分区 id tid_v2(未传时交互选择, 可选跳过; 不设置时不提交该字段)
       --title=<value>      视频标题(缺省由 biliup 按文件名处理)
 
 GLOBAL FLAGS
@@ -397,7 +428,7 @@ ALIASES
   $ vp bup up
 
 EXAMPLES
-  $ vp bup up video.mp4 --title 标题 --tag 标签1,标签2 --tid 171
+  $ vp bup up video.mp4 --title 标题 --tag 标签1,标签2 --tid 171 --tid-v2 1020
 
   $ vp bup up part1.mp4 part2.mp4 --title 多P标题
 
@@ -413,8 +444,8 @@ EXAMPLES
 ```
 USAGE
   $ vp bup upload [FILES...] [--json] [--title <value>] [--desc <value>] [--tag <value>] [--tid <value>]
-    [--copyright <value>] [--source <value>] [--cover <value>] [--line <value>] [--limit <value>] [--submit
-    app|web|b-cut-android] [--dynamic <value>] [--dtime <value>] [-f <value>]
+    [--tidV2 <value>] [--copyright <value>] [--source <value>] [--cover <value>] [--line <value>] [--limit <value>]
+    [--submit app|web|b-cut-android] [--dynamic <value>] [--dtime <value>] [-f <value>]
 
 ARGUMENTS
   [FILES...]  视频文件路径(可传多个实现多P投稿; 全部省略则交互选择)
@@ -424,15 +455,17 @@ FLAGS
       --copyright=<value>  1-自制 2-转载(未传时交互选择, 交互默认 1)
       --cover=<value>      封面图片路径
       --desc=<value>       视频简介
-      --dtime=<value>      延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时)
+      --dtime=<value>      延时发布时间(YYYY-MM-DD HH:mm 本地时区, 需晚于现在 4 小时; 缺省立即发布)
       --dynamic=<value>    空间动态内容
       --limit=<value>      单文件最大并发数(未传时交互输入, 交互默认 3)
-      --line=<value>       上传线路(bldsa/cnbldsa/andsa/atdsa/bda2/cnbd/anbd/atbd/tx/cntx/antx/attx/txa/alia/estx/akbd)
+      --line=<value>       上传线路(bldsa/cnbldsa/andsa/atdsa/bda2/cnbd/anbd/atbd/tx/cntx/antx/attx/txa/alia/estx/akbd;
+                           缺省自动选择)
       --source=<value>     转载来源(copyright=2 时使用)
       --submit=<option>    提交接口
                            <options: app|web|b-cut-android>
       --tag=<value>        视频标签, 逗号分隔多个
       --tid=<value>        投稿分区 id(未传时交互选择, 交互默认 171)
+      --tidV2=<value>      新版投稿分区 id tid_v2(未传时交互选择, 可选跳过; 不设置时不提交该字段)
       --title=<value>      视频标题(缺省由 biliup 按文件名处理)
 
 GLOBAL FLAGS
@@ -445,7 +478,7 @@ ALIASES
   $ vp bup up
 
 EXAMPLES
-  $ vp bup upload video.mp4 --title 标题 --tag 标签1,标签2 --tid 171
+  $ vp bup upload video.mp4 --title 标题 --tag 标签1,标签2 --tid 171 --tid-v2 1020
 
   $ vp bup upload part1.mp4 part2.mp4 --title 多P标题
 

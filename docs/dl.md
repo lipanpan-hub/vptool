@@ -19,18 +19,19 @@
 
 ```
 USAGE
-  $ vp dl URL [--json] [-b] [-f <value>] [-k] [-o <value>] [-c]
+  $ vp dl URL [--json] [-b] [-f <value>] [-k] [--output-dir <value>] [-o <value>] [-c]
 
 ARGUMENTS
   URL  视频链接
 
 FLAGS
-  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
-                           视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
-  -c, --use-cookies        从 Firefox 浏览器获取 cookies
-  -f, --format-id=<value>  指定格式ID（跳过交互式选择）
-  -k, --keep-audio         在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
-  -o, --output=<value>     输出目录（默认为配置文件中的 documentsDir）
+  -b, --best                直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
+                            视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
+  -c, --use-cookies         从 Firefox 浏览器获取 cookies
+  -f, --format-id=<value>   指定格式ID（跳过交互式选择）
+  -k, --keep-audio          在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
+  -o, --output=<value>      输出基目录（在其下追加交互选择的 prefix，默认为配置文件中的 documentsDir）
+      --output-dir=<value>  最终输出目录（指定后跳过交互式 prefix 选择，--json 模式必须使用此项）
 
 GLOBAL FLAGS
   --json  Format output as json.
@@ -206,18 +207,19 @@ _See code: [src/commands/dl/updatebin.ts](https://github.com/lipanpan-hub/vptool
 
 ```
 USAGE
-  $ vp dl video URL [--json] [-b] [-f <value>] [-k] [-o <value>] [-c]
+  $ vp dl video URL [--json] [-b] [-f <value>] [-k] [--output-dir <value>] [-o <value>] [-c]
 
 ARGUMENTS
   URL  视频链接
 
 FLAGS
-  -b, --best               直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
-                           视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
-  -c, --use-cookies        从 Firefox 浏览器获取 cookies
-  -f, --format-id=<value>  指定格式ID（跳过交互式选择）
-  -k, --keep-audio         在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
-  -o, --output=<value>     输出目录（默认为配置文件中的 documentsDir）
+  -b, --best                直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
+                            视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
+  -c, --use-cookies         从 Firefox 浏览器获取 cookies
+  -f, --format-id=<value>   指定格式ID（跳过交互式选择）
+  -k, --keep-audio          在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
+  -o, --output=<value>      输出基目录（在其下追加交互选择的 prefix，默认为配置文件中的 documentsDir）
+      --output-dir=<value>  最终输出目录（指定后跳过交互式 prefix 选择，--json 模式必须使用此项）
 
 GLOBAL FLAGS
   --json  Format output as json.

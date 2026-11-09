@@ -40,6 +40,17 @@ export type BiliupServerStartResult = {
   kind: 'started'
 }
 
+/**
+ * stop() 的执行结果
+ */
+export type BiliupServerStopResult = {
+  kind: 'not-running'
+} | {
+  kind: 'stopped'
+  processId: number
+  processName: string
+}
+
 // 服务可执行文件名
 const SERVER_EXE_NAME = 'biliup.exe'
 // 服务默认监听端口与绑定地址(vp bup server 与上传前自动拉起共用)
@@ -49,6 +60,8 @@ export const SERVER_DEFAULT_BIND = '127.0.0.1'
 const READY_TIMEOUT_MS = 30_000
 // 就绪探测轮询间隔
 const POLL_INTERVAL_MS = 500
+// 停止服务时等待进程退出的超时时间
+const STOP_TIMEOUT_MS = 15_000
 // 进程名关键词, 用于区分端口属主是否为 biliup
 const SERVER_PROCESS_NAME_KEYWORD = 'biliup'
 
@@ -214,6 +227,52 @@ export class BiliupServerManager {
   // 判断端口属主进程是否为 biliup
   private isOwnedByBiliup(processName: string): boolean {
     return processName.toLowerCase().includes(SERVER_PROCESS_NAME_KEYWORD)
+  }
+
+  // #endregion
+
+  // #region 停止服务(仅支持 Windows, 依赖 Get-NetTCPConnection 定位进程)
+
+  /**
+   * 停止服务: 按监听端口定位进程并强制终止, 轮询确认已退出。
+   */
+  async stop(): Promise<BiliupServerStopResult> {
+    const listeningProcess = this.findListeningProcess()
+    if (listeningProcess === null) {
+      return {kind: 'not-running'}
+    }
+    // 防止误杀恰好占用同一端口的其他程序
+    if (!this.isOwnedByBiliup(listeningProcess.name)) {
+      throw new Error(`端口 ${this.port} 被其他进程占用: ${listeningProcess.name} (pid=${listeningProcess.processId})`)
+    }
+
+    this.terminateProcess(listeningProcess.processId)
+    if (!(await this.waitUntilStopped())) {
+      throw new Error(`服务在 ${STOP_TIMEOUT_MS / 1000} 秒内未关闭, 可手动执行: taskkill /F /PID ${listeningProcess.processId}`)
+    }
+    return {kind: 'stopped', processId: listeningProcess.processId, processName: listeningProcess.name}
+  }
+
+  // 强制终止指定进程, 进程可能已自行退出故吞掉 taskkill 的失败
+  private terminateProcess(processId: number): void {
+    try {
+      execFileSync('taskkill', ['/PID', String(processId), '/F'], {encoding: 'utf8'})
+    } catch {
+      // 交由后续轮询确认是否已退出
+    }
+  }
+
+  // 轮询端口直到 Listen 状态消失(即进程已退出或不再监听)
+  private async waitUntilStopped(): Promise<boolean> {
+    const stopDeadline = Date.now() + STOP_TIMEOUT_MS
+    while (Date.now() < stopDeadline) {
+      if (this.findListeningProcess() === null) {
+        return true
+      }
+      // eslint-disable-next-line no-await-in-loop -- 轮询场景必须串行等待
+      await delay(POLL_INTERVAL_MS)
+    }
+    return false
   }
 
   // #endregion

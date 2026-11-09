@@ -37,7 +37,7 @@ description: "调用 vp（@lppx/vptool）命令行完成视频下载、抖音视
 - 下面几个命令必须交互，`--json` 下会直接报错：`dl` / `dl video`、`douyin fetch-one-video`（保存目录 prefix）、`fft video-split-copy`（起止时间）、`fft reencode-audio`（目标格式）、`dl cd`、`config edit`。
 - `config show --json` 返回的 `content` 里 `TIKHUB_IO_TOKEN` 已脱敏成 `***`。
 - 目标文件已存在时（`fft add-audio` / `extract-audio` / `trim-silence`），`--json` 下不会询问覆盖，直接报错，需先删除已存在的文件。
-- `bup upload --json` 不提问，未传的 `tid`/`copyright`/`limit` 分别取 171 / 1 / 3，转载（`copyright=2`）必须带 `--source`。
+- `bup upload --json` 不提问，未传的 `tid`/`copyright`/`limit` 分别取 171 / 1 / 3，转载（`copyright=2`）必须带 `--source`；`--tidV2`（新版分区 id）可选，不传则不提交该字段，交互模式下首项"默认(不设置)"跳过。
 - 子进程或下载进度条的输出会改写到 stderr，不影响 stdout 的 JSON。
 - 写错命令名时 oclif 会出 "Did you mean" 提示，那不是 JSON，退出码 127。
 
