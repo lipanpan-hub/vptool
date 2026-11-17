@@ -108,14 +108,17 @@ export async function downloadVideo(
   
   try {
     // 使用 download builder API
-    // 等同命令: yt-dlp -f <formatId> -o "<outputDir>/<域名>/<频道名>/<标题>.<扩展名>/<标题>.<扩展名>" --progress --newline [--cookies-from-browser firefox] <url>
+    // 等同命令: yt-dlp -f <formatId> -o "<outputDir>/<域名>/<频道名>/<标题前15字符>/<标题前120字符>.<扩展名>" --replace-in-metadata title,channel,uploader "<零宽字符正则>" "" --progress --newline [--cookies-from-browser firefox] <url>
     // 注意: ytdlp-nodejs 的 .output() 是目录语义(内部自动追加 /%(title)s.%(ext)s), 自定义文件名模板必须用 .setOutputTemplate()
     // 频道名优先取 channel, 缺失时回退 uploader(如 B 站), 避免出现 NA 文件夹
-    // 每个视频放在 <标题>.<扩展名> 同名文件夹内(需求: 文件夹装同名视频), 字幕/mp3/简介跟随落在其中
+    // 每个视频放在标题缩写文件夹内, 字幕/mp3/简介跟随视频文件名落在其中
+    // 文件夹名的标题截断为 15 字符以压缩路径长度(Windows MAX_PATH 为 259 字符), 文件名的标题宽松截断为 120 字符, 频道名不截断
+    // 零宽字符(U+200B-U+200F, U+2060, U+FEFF)在生成文件名前从元数据中剔除(替换先于截断); FIELDS 必须用逗号分隔, 用 | 不生效
     const builder = ytdlp
       .download(url)
       .addOption('format', formatId)
-      .setOutputTemplate(`${outputDir}/%(webpage_url_domain)s/%(channel,uploader)s/%(title)s.%(ext)s/%(title)s.%(ext)s`)
+      .setOutputTemplate(`${outputDir}/%(webpage_url_domain)s/%(channel,uploader)s/%(title).15s/%(title).120s.%(ext)s`)
+      .addArgs('--replace-in-metadata', 'title,channel,uploader', '[\\u200b-\\u200f\\u2060\\ufeff]', '')
       .addArgs('--progress', '--newline')
       .on('progress', (progress: any) => {
         // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
@@ -190,7 +193,7 @@ export async function downloadVideo(
       await prependUrlToDescription(videoPath, url, channelName, logger)
     }
 
-    // 返回视频所在目录(即 <标题>.<扩展名> 同名文件夹, 字幕/mp3/简介等附带产物都在其中)
+    // 返回视频所在目录(即 <标题前15字符> 文件夹, 字幕/mp3/简介等附带产物都在其中)
     return videoPath ? dirname(videoPath) : undefined
   } catch (error) {
     if (lastProgressLength > 0) {
