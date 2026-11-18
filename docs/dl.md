@@ -26,7 +26,7 @@ ARGUMENTS
 
 FLAGS
   -b, --best                直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
-                            视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
+                            视频自动附带英文字幕（优先 en-orig，缺失回退 en）与 zh-Hans 简体中文字幕；B 站视频自动附带 ai-zh AI 中文字幕；YouTube 视频自动附带下载视频简介与封面）
   -c, --use-cookies         从 Firefox 浏览器获取 cookies
   -f, --format-id=<value>   指定格式ID（跳过交互式选择）
   -k, --keep-audio          在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）
@@ -214,7 +214,7 @@ ARGUMENTS
 
 FLAGS
   -b, --best                直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube
-                            视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）
+                            视频自动附带英文字幕（优先 en-orig，缺失回退 en）与 zh-Hans 简体中文字幕；B 站视频自动附带 ai-zh AI 中文字幕；YouTube 视频自动附带下载视频简介与封面）
   -c, --use-cookies         从 Firefox 浏览器获取 cookies
   -f, --format-id=<value>   指定格式ID（跳过交互式选择）
   -k, --keep-audio          在下载视频的同时额外抽取一份 mp3 音频文件（用于语音识别等，需要 ffmpeg）

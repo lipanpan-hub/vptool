@@ -7,7 +7,7 @@ import {downloadVideo} from '../../lib/dl/download-video.js'
 import {fetchVideoInfo} from '../../lib/dl/fetch-video-info.js'
 import {selectFormat} from '../../lib/dl/select-format.js'
 import {selectPrefix} from '../../lib/dl/select-prefix.js'
-import {resolveAutoEnglishSubtitleLang} from '../../lib/dl/select-subtitle.js'
+import {resolveSubtitlePlan, type SubtitlePlan} from '../../lib/dl/select-subtitle.js'
 import {spawnShellAt} from '../../lib/dl/spawn-shell.js'
 import {formatVideoError} from '../../lib/dl/handle-fetch-error.js'
 import {withStdoutToStderr} from '../../lib/dl/redirect-stdout.js'
@@ -31,7 +31,7 @@ export default class DlVideo extends BaseCommand {
     best: Flags.boolean({
       char: 'b',
       default: false,
-      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕，优先 en-orig，缺失回退 en；YouTube 视频自动附带下载视频简介与封面）',
+      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕（优先 en-orig，缺失回退 en）与 zh-Hans 简体中文字幕；B 站视频自动附带 ai-zh AI 中文字幕；YouTube 视频自动附带下载视频简介与封面）',
     }),
     'format-id': Flags.string({
       char: 'f',
@@ -104,10 +104,10 @@ export default class DlVideo extends BaseCommand {
           outputDir = join(baseOutputDir, prefix)
         }
 
-        // --best 且为 YouTube 时自动附带英文字幕: 优先 en-orig(原声 ASR), 缺失回退 en
-        const autoSubtitleLang = (best && videoInfo.extractor_key === 'Youtube')
-          ? resolveAutoEnglishSubtitleLang(videoInfo)
-          : undefined
+        // --best 时按站点自动附带字幕: YouTube 为英文(en-orig 优先, 缺失回退 en) + zh-Hans, B 站为 ai-zh
+        const subtitlePlan: SubtitlePlan = best
+          ? resolveSubtitlePlan(videoInfo)
+          : {autoLangs: [], manualLangs: []}
 
         // --best 且为 YouTube 时自动附带下载视频简介
         const writeDescription = best && videoInfo.extractor_key === 'Youtube'
@@ -117,10 +117,10 @@ export default class DlVideo extends BaseCommand {
 
         // 下载视频, 成功后返回视频所在目录(字幕/mp3/简介等附带产物的同名文件夹)
         const videoDir = await downloadVideo(videoUrl, {
-          autoSubtitleLang,
           extractAudio: keepAudio,
           formatId: selectedFormatId,
           outputDir,
+          subtitlePlan,
           useCookies,
           writeDescription,
           writeThumbnail,

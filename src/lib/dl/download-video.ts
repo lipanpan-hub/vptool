@@ -1,9 +1,10 @@
 import {readFile, writeFile} from 'node:fs/promises'
 import {basename, dirname, extname, join} from 'node:path'
 
-import {YtDlp} from 'ytdlp-nodejs'
+import {type Download, YtDlp} from 'ytdlp-nodejs'
 
 import {extractAudioToMp3} from './extract-audio.js'
+import type {SubtitlePlan} from './select-subtitle.js'
 
 // 从下载结果中定位成品视频文件路径(分流/合并完成后 yt-dlp 回报的最终文件)
 function resolveVideoPath(result: any): string | undefined {
@@ -63,9 +64,37 @@ async function extractAudioFromResult(result: any, logger?: {log: (message: stri
   logger?.log(`✓ 音频已保存: ${mp3Path}`)
 }
 
+// 按字幕计划配置 builder: 人工字幕走 --write-subs, 自动字幕走 --write-auto-subs, 两者共用 --sub-langs
+// 字幕与视频同目录同名落盘(如 "标题.en-orig.vtt"、"标题.ai-zh.srt"), 格式优先 vtt, 没有 vtt 时取站点最优格式
+function applySubtitlePlan(builder: Download, subtitlePlan: SubtitlePlan): void {
+  const allLangs = [...subtitlePlan.manualLangs, ...subtitlePlan.autoLangs]
+  if (allLangs.length === 0) return
+
+  if (subtitlePlan.manualLangs.length > 0) builder.writeSubs()
+  if (subtitlePlan.autoLangs.length > 0) builder.writeAutoSubs()
+  builder.subLangs(allLangs).addOption('subFormat', 'vtt/best')
+  // 字幕下载失败(如机翻 zh-Hans 遇 HTTP 429)默认会中止整个下载; --ignore-errors 将其降级为 WARNING 继续下载视频
+  // 视频本身下载失败时 yt-dlp 仍以非零退出码结束, 不会被吞掉
+  builder.addOption('ignoreErrors', true)
+}
+
+// 下载开始前输出本次下载计划: 格式、保存位置及附带产物
+function logDownloadPlan(options: DownloadVideoOptions, logger?: {log: (message: string) => void}): void {
+  if (!logger) return
+  const {extractAudio, formatId, outputDir, subtitlePlan, writeDescription, writeThumbnail} = options
+  const subtitleLangs = [...subtitlePlan.manualLangs, ...subtitlePlan.autoLangs]
+
+  logger.log(`\n开始下载 (格式ID: ${formatId})...`)
+  logger.log(`保存位置: ${outputDir}\n`)
+  if (extractAudio) logger.log('🎵 将额外抽取一份音频文件\n')
+  if (subtitleLangs.length > 0) logger.log(`📝 将附带下载字幕 (语言: ${subtitleLangs.join(', ')})\n`)
+  if (writeDescription) logger.log('📄 将附带下载视频简介\n')
+  if (writeThumbnail) logger.log('🖼️ 将附带下载视频封面\n')
+}
+
 export interface DownloadVideoOptions {
-  // 随视频一起下载的自动生成字幕语言(如 en-orig), 不需要字幕时省略
-  autoSubtitleLang?: string
+  // 随视频一起下载的字幕计划, 不需要字幕时两个列表都传空数组
+  subtitlePlan: SubtitlePlan
   // 在下载视频的同时额外抽取一份音频文件(用于语音识别等), 需要 ffmpeg
   extractAudio?: boolean
   formatId: string
@@ -82,25 +111,9 @@ export async function downloadVideo(
   options: DownloadVideoOptions,
   logger?: {log: (message: string) => void}
 ): Promise<string | undefined> {
-  const {autoSubtitleLang, extractAudio, formatId, outputDir, useCookies, writeDescription, writeThumbnail} = options
+  const {extractAudio, formatId, outputDir, subtitlePlan, useCookies, writeDescription, writeThumbnail} = options
 
-  logger?.log(`\n开始下载 (格式ID: ${formatId})...`)
-  logger?.log(`保存位置: ${outputDir}\n`)
-  if (extractAudio) {
-    logger?.log('🎵 将额外抽取一份音频文件\n')
-  }
-
-  if (autoSubtitleLang) {
-    logger?.log(`📝 将附带下载自动生成字幕 (语言: ${autoSubtitleLang})\n`)
-  }
-
-  if (writeDescription) {
-    logger?.log(`📄 将附带下载视频简介\n`)
-  }
-
-  if (writeThumbnail) {
-    logger?.log(`🖼️ 将附带下载视频封面\n`)
-  }
+  logDownloadPlan(options, logger)
 
   const ytdlp = new YtDlp()
   
@@ -118,7 +131,7 @@ export async function downloadVideo(
       .download(url)
       .addOption('format', formatId)
       .setOutputTemplate(`${outputDir}/%(webpage_url_domain)s/%(channel,uploader)s/%(title).15s/%(title).120s.%(ext)s`)
-      .addArgs('--replace-in-metadata', 'title,channel,uploader', '[\\u200b-\\u200f\\u2060\\ufeff]', '')
+      .addArgs('--replace-in-metadata', 'title,channel,uploader', String.raw`[\u200b-\u200f\u2060\ufeff]`, '')
       .addArgs('--progress', '--newline')
       .on('progress', (progress: any) => {
         // progress 对象包含: percentage_str, total_bytes_str, speed_str, eta_str 等属性
@@ -153,10 +166,7 @@ export async function downloadVideo(
         }
       })
     
-    // 自动字幕与视频同目录同名落盘(如 "标题.en-orig.vtt"), 格式优先 vtt
-    if (autoSubtitleLang) {
-      builder.writeAutoSubs().subLangs([autoSubtitleLang]).addOption('subFormat', 'vtt/best')
-    }
+    applySubtitlePlan(builder, subtitlePlan)
 
     // 视频简介与视频同目录同名落盘(如 "标题.description")
     if (writeDescription) {

@@ -18,6 +18,39 @@ export function resolveAutoEnglishSubtitleLang(videoInfo: VideoInfo): string | u
   return AUTO_EN_SUBTITLE_LANG_PRIORITY.find((lang) => autoCaptions[lang])
 }
 
+// 自动简体中文字幕语言: zh-Hans 是 YouTube 从原声 ASR 轨机翻的 "Chinese (Simplified)"
+const AUTO_ZH_SUBTITLE_LANG = 'zh-Hans'
+
+// 汇总随视频附带下载的自动字幕语言: 英文(按优先级挑一个) + 简体中文, 视频缺失的语言自动跳过
+export function resolveAutoSubtitleLangs(videoInfo: VideoInfo): string[] {
+  const autoCaptions = videoInfo.automatic_captions ?? {}
+  const englishLang = resolveAutoEnglishSubtitleLang(videoInfo)
+  const chineseLang = autoCaptions[AUTO_ZH_SUBTITLE_LANG] ? AUTO_ZH_SUBTITLE_LANG : undefined
+  return [englishLang, chineseLang].filter((lang): lang is string => lang !== undefined)
+}
+
+// 随视频附带下载的字幕计划: manualLangs 走 --write-subs, autoLangs 走 --write-auto-subs
+export interface SubtitlePlan {
+  autoLangs: string[]
+  manualLangs: string[]
+}
+
+// B 站 AI 中文字幕语言, 属于普通字幕(subtitles)而非自动字幕
+const BILIBILI_AI_ZH_SUBTITLE_LANG = 'ai-zh'
+
+// 各站点的字幕计划策略, 按 yt-dlp 的 extractor_key 索引
+// B 站字幕信息只在请求写字幕时才会提取(-J 拿不到), 无法预先判断是否存在, 因此直接请求; 缺失时 yt-dlp 仅提示不报错
+const SUBTITLE_PLAN_RESOLVERS: Record<string, (videoInfo: VideoInfo) => SubtitlePlan> = {
+  BiliBili: () => ({autoLangs: [], manualLangs: [BILIBILI_AI_ZH_SUBTITLE_LANG]}),
+  Youtube: (videoInfo) => ({autoLangs: resolveAutoSubtitleLangs(videoInfo), manualLangs: []}),
+}
+
+// 按站点解析随视频附带下载的字幕计划, 未配置的站点不附带字幕
+export function resolveSubtitlePlan(videoInfo: VideoInfo): SubtitlePlan {
+  const resolvePlan = SUBTITLE_PLAN_RESOLVERS[videoInfo.extractor_key]
+  return resolvePlan ? resolvePlan(videoInfo) : {autoLangs: [], manualLangs: []}
+}
+
 // 把字幕表转换成选项, 已在 seenLangs 中出现的语言不再重复列出(yt-dlp 同语言会优先下载人工字幕)
 function toChoices(subtitleMap: SubtitleMap, label: string, seenLangs: Set<string>): SubtitleChoice[] {
   const choices: SubtitleChoice[] = []

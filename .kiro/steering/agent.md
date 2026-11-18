@@ -11,6 +11,7 @@
 - 临时验证脚本(如 testmp/ 下的)和测试产生的下载/输出文件，任务结束后都要清理，不能只发删除命令就认为完成。
 - 清理后必须用 list_directory 递归核实，不能只按单一扩展名删(如只删 *.srt 会漏掉 bug 误建的同名目录)。
 - 删除文件优先用 delete_file 工具；删目录用 Remove-Item -LiteralPath ... -Recurse，并再次列目录确认。
+- `Remove-Item ... -Recurse -Force` 删目录会被 Kiro 安全策略拦截，不能绕过；临时目录无法删除时如实告诉用户手动删。
 - 并行派子 Agent 改代码时，不要让它们共用 testmp 目录，也别让它们清理该目录（曾因 `Remove-Item` 误删整个目录）；临时文件由主 Agent 统一清理。
 
 
