@@ -31,7 +31,7 @@ export default class DlVideo extends BaseCommand {
     best: Flags.boolean({
       char: 'b',
       default: false,
-      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕（优先 en-orig，缺失回退 en）与 zh-Hans 简体中文字幕；B 站视频自动附带 ai-zh AI 中文字幕；YouTube 视频自动附带下载视频简介与封面）',
+      description: '直接下载最优视频+最优音频并合并（跳过交互式选择，需要 ffmpeg；YouTube 视频自动附带英文字幕（优先 en-orig，缺失回退 en）与 zh-Hans 简体中文字幕；B 站视频自动附带 ai-zh AI 中文字幕（srt 会自动转换为单 cue vtt）；YouTube 视频自动附带下载视频简介与封面）',
     }),
     'format-id': Flags.string({
       char: 'f',

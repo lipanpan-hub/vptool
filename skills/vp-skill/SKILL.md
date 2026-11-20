@@ -66,7 +66,7 @@ Agent 的终端不是 TTY，交互提示无法可靠应答。已验证：在 pws
 ### 视频下载 `vp dl`（yt-dlp）
 
 - `vp dl <URL>` 等同 `vp dl video <URL>`
-  - `-b, --best`：最优视频+最优音频合并，跳过格式选择；YouTube 视频还会附带英文自动字幕（en-orig 优先，缺失回退 en）、zh-Hans 简体中文自动字幕、简介与封面；B 站视频会附带 ai-zh AI 中文字幕（srt，视频没有时 yt-dlp 只提示不报错）；某个字幕下载失败（如机翻 zh-Hans 遇 HTTP 429）只输出 WARNING，视频照常下载，退出码仍为 0
+  - `-b, --best`：最优视频+最优音频合并，跳过格式选择；YouTube 视频还会附带英文自动字幕（en-orig 优先，缺失回退 en）、zh-Hans 简体中文自动字幕、简介与封面；B 站视频会附带 ai-zh AI 中文字幕（srt，视频没有时 yt-dlp 只提示不报错；下载到后自动转换出同名 `.ai-zh.vtt` 单 cue 版本，保留原 srt）；某个字幕下载失败（如机翻 zh-Hans 遇 HTTP 429）只输出 WARNING，视频照常下载，退出码仍为 0
   - `-f, --format-id <id>`：指定格式 ID
   - `-o, --output <dir>`：覆盖输出根目录（默认 `documentsPath`）
   - `-k, --keep-audio`：额外抽一份 mp3，默认开启

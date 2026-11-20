@@ -1,8 +1,10 @@
+import {existsSync} from 'node:fs'
 import {readFile, writeFile} from 'node:fs/promises'
 import {basename, dirname, extname, join} from 'node:path'
 
 import {type Download, YtDlp} from 'ytdlp-nodejs'
 
+import {srtToSingleCueVtt} from '../vtt/srt-to-vtt.js'
 import {extractAudioToMp3} from './extract-audio.js'
 import type {SubtitlePlan} from './select-subtitle.js'
 
@@ -48,6 +50,23 @@ async function prependUrlToDescription(videoPath: string, videoUrl: string, chan
     logger?.log('✓ 简介文件首行已写入视频链接')
   } catch {
     logger?.log('⚠ 未找到简介文件, 跳过写入视频链接')
+  }
+}
+
+// 把字幕计划中已下载的 srt(如 B 站 ai-zh)转换为单 cue vtt, 与 srt 同目录同名(仅扩展名不同), 保留原 srt
+async function convertSrtSubtitlesToVtt(videoPath: string, subtitlePlan: SubtitlePlan, logger?: {log: (message: string) => void}): Promise<void> {
+  const videoName = basename(videoPath, extname(videoPath))
+  const allLangs = [...subtitlePlan.manualLangs, ...subtitlePlan.autoLangs]
+
+  for (const lang of allLangs) {
+    const srtPath = join(dirname(videoPath), `${videoName}.${lang}.srt`)
+    // 视频没有该语言字幕或已是 vtt 时不存在 srt 文件, 直接跳过
+    if (!existsSync(srtPath)) continue
+
+    const vttPath = join(dirname(videoPath), `${videoName}.${lang}.vtt`)
+    const srtContent = await readFile(srtPath, 'utf8')
+    await writeFile(vttPath, srtToSingleCueVtt(srtContent), 'utf8')
+    logger?.log(`✓ 字幕已转换为单 cue vtt: ${vttPath}`)
   }
 }
 
@@ -194,6 +213,11 @@ export async function downloadVideo(
 
     if (extractAudio) {
       await extractAudioFromResult(result, logger)
+    }
+
+    // 下载到 srt 字幕(如 B 站 ai-zh)时顺手转换为单 cue vtt
+    if (videoPath) {
+      await convertSrtSubtitlesToVtt(videoPath, subtitlePlan, logger)
     }
 
     // 简介文件首行插入"频道名|视频链接", 便于溯源
