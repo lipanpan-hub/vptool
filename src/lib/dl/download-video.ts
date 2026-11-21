@@ -58,16 +58,17 @@ async function convertSrtSubtitlesToVtt(videoPath: string, subtitlePlan: Subtitl
   const videoName = basename(videoPath, extname(videoPath))
   const allLangs = [...subtitlePlan.manualLangs, ...subtitlePlan.autoLangs]
 
-  for (const lang of allLangs) {
+  // 各语言字幕互相独立, 并行转换
+  await Promise.all(allLangs.map(async (lang) => {
     const srtPath = join(dirname(videoPath), `${videoName}.${lang}.srt`)
     // 视频没有该语言字幕或已是 vtt 时不存在 srt 文件, 直接跳过
-    if (!existsSync(srtPath)) continue
+    if (!existsSync(srtPath)) return
 
     const vttPath = join(dirname(videoPath), `${videoName}.${lang}.vtt`)
     const srtContent = await readFile(srtPath, 'utf8')
     await writeFile(vttPath, srtToSingleCueVtt(srtContent), 'utf8')
     logger?.log(`✓ 字幕已转换为单 cue vtt: ${vttPath}`)
-  }
+  }))
 }
 
 // 抽取音频: 对合并后的成品视频单独抽取一份同名 mp3, 避免 bestvideo/bestaudio 分流中间文件被保留
